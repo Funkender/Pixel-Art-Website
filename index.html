@@ -2,7 +2,7 @@
 <html lang="de">
 <head>
   <meta charset="UTF-8" />
-  <title>Pixel64 Plattform</title>
+  <title>Pixel Plattform</title>
   <meta name="viewport" content="width=device-width, initial-scale=1" />
   <style>
     :root { --scale: 8; }
@@ -12,19 +12,22 @@
     nav button { background:#1f1f1f; color:#fff; border:1px solid #333; padding:8px 12px; border-radius:6px; cursor:pointer; }
     nav button.active { background:#333; }
     .toolbar { display:flex; gap:12px; justify-content:center; margin-bottom:12px; flex-wrap:wrap; }
-    #canvasWrapper { margin:0 auto; width:calc(64*var(--scale)*1px); height:calc(64*var(--scale)*1px); border:2px solid #333; background:#1a1a1a; position:relative; }
+    #canvasWrapper { margin:0 auto; border:2px solid #333; background:#1a1a1a; position:relative; image-rendering:pixelated; }
     canvas { width:100%; height:100%; image-rendering:pixelated; display:block; }
     .grid { position:absolute; inset:0; pointer-events:none;
       background-image:linear-gradient(to right,rgba(255,255,255,0.06) 1px,transparent 1px),
                        linear-gradient(to bottom,rgba(255,255,255,0.06) 1px,transparent 1px);
       background-size:calc(var(--scale)*1px) calc(var(--scale)*1px); mix-blend-mode:screen; }
     .gallery { display:grid; grid-template-columns:repeat(auto-fill,minmax(120px,1fr)); gap:12px; }
+    .gallery-item { position:relative; }
     .gallery img { width:100%; image-rendering:pixelated; border:1px solid #333; background:#222; }
+    .like { position:absolute; bottom:6px; right:6px; background:#ff4d4d; color:#fff; border:none; border-radius:50%; width:32px; height:32px; cursor:pointer; }
+    .likes-count { position:absolute; bottom:6px; left:6px; font-size:12px; background:#0008; padding:2px 6px; border-radius:4px; }
     .note { text-align:center; font-size:12px; opacity:0.7; margin-top:8px; }
   </style>
 </head>
 <body>
-  <h1>Pixel64 Plattform</h1>
+  <h1>Pixel Plattform</h1>
   <nav>
     <button id="nav-editor" class="active">Editor</button>
     <button id="nav-uploads">Uploads</button>
@@ -34,8 +37,10 @@
   <!-- Editor -->
   <section id="page-editor">
     <div class="toolbar">
+      <label>Resolution <input type="number" id="resolution" min="8" max="128" value="64"></label>
       <label>Farbe <input type="color" id="color" value="#ff4d4d"></label>
       <label>Zoom <input type="range" id="scale" min="4" max="16" value="8"></label>
+      <button id="resize">Neu erstellen</button>
       <button id="clear">Leeren</button>
       <button id="download">Download</button>
       <button id="upload">Upload</button>
@@ -60,21 +65,31 @@
   </section>
 
   <script>
-    const canvas=document.getElementById('canvas');
-    const ctx=canvas.getContext('2d',{willReadFrequently:true});
+    let canvas=document.getElementById('canvas');
+    let ctx=canvas.getContext('2d',{willReadFrequently:true});
     const color=document.getElementById('color');
     const scale=document.getElementById('scale');
     const clearBtn=document.getElementById('clear');
     const downloadBtn=document.getElementById('download');
     const uploadBtn=document.getElementById('upload');
+    const resolutionInput=document.getElementById('resolution');
+    const resizeBtn=document.getElementById('resize');
     let drawing=false;
+
+    function setupCanvas(size){
+      canvas.width=size; canvas.height=size;
+      document.getElementById('canvasWrapper').style.width=(size*scale.value)+"px";
+      document.getElementById('canvasWrapper').style.height=(size*scale.value)+"px";
+      ctx.clearRect(0,0,size,size);
+    }
+    setupCanvas(64);
 
     canvas.addEventListener('contextmenu',e=>e.preventDefault());
     function getPixel(e){
       const rect=canvas.getBoundingClientRect();
       const x=Math.floor((e.clientX-rect.left)*canvas.width/rect.width);
       const y=Math.floor((e.clientY-rect.top)*canvas.height/rect.height);
-      return {x:Math.max(0,Math.min(63,x)),y:Math.max(0,Math.min(63,y))};
+      return {x:Math.max(0,Math.min(canvas.width-1,x)),y:Math.max(0,Math.min(canvas.height-1,y))};
     }
     function paint(x,y){ctx.fillStyle=color.value;ctx.fillRect(x,y,1,1);}
     function erase(x,y){ctx.clearRect(x,y,1,1);}
@@ -82,20 +97,25 @@
     canvas.addEventListener('mousedown',e=>{drawing=true;drawHandler(e);});
     window.addEventListener('mouseup',()=>drawing=false);
     canvas.addEventListener('mousemove',e=>{if(drawing)drawHandler(e);});
-    scale.addEventListener('input',e=>document.documentElement.style.setProperty('--scale',e.target.value));
-    clearBtn.addEventListener('click',()=>ctx.clearRect(0,0,64,64));
+
+    scale.addEventListener('input',e=>{
+      document.documentElement.style.setProperty('--scale',e.target.value);
+      document.getElementById('canvasWrapper').style.width=(canvas.width*e.target.value)+"px";
+      document.getElementById('canvasWrapper').style.height=(canvas.height*e.target.value)+"px";
+    });
+    clearBtn.addEventListener('click',()=>ctx.clearRect(0,0,canvas.width,canvas.height));
+    resizeBtn.addEventListener('click',()=>setupCanvas(parseInt(resolutionInput.value)));
+
     downloadBtn.addEventListener('click',()=>{
-      const a=document.createElement('a');
-      a.download='pixel64.png';
-      a.href=canvas.toDataURL('image/png');
-      a.click();
+      const url=canvas.toDataURL('image/png');
+      window.open(url,'_blank'); // iOS-freundlich
     });
 
-    // Uploads speichern in LocalStorage
+    // Uploads speichern in LocalStorage mit Likes
     function saveUpload(mine=false){
       const data=canvas.toDataURL('image/png');
       const uploads=JSON.parse(localStorage.getItem('uploads')||'[]');
-      uploads.push({src:data,mine});
+      uploads.push({src:data,mine,likes:0});
       localStorage.setItem('uploads',JSON.stringify(uploads));
       alert("Bild hochgeladen!");
     }
@@ -115,17 +135,19 @@
     document.getElementById('nav-uploads').onclick=()=>showPage('uploads');
     document.getElementById('nav-my').onclick=()=>showPage('my');
 
-    // Galerie rendern
+    // Galerie rendern mit Likes
     function renderGallery(name){
       const uploads=JSON.parse(localStorage.getItem('uploads')||'[]');
       const container=document.getElementById('gallery-'+name);
       container.innerHTML='';
-      uploads.filter(u=>name==='uploads'||u.mine).forEach(u=>{
+      uploads.filter(u=>name==='uploads'||u.mine).forEach((u,i)=>{
+        const item=document.createElement('div');
+        item.className='gallery-item';
         const img=document.createElement('img');
         img.src=u.src;
-        container.appendChild(img);
-      });
-    }
-  </script>
-</body>
-</html>
+        const likeBtn=document.createElement('button');
+        likeBtn.className='like';
+        likeBtn.innerHTML='❤';
+        likeBtn.onclick=()=>{
+          u.likes++;
+          localStorage.setItem('uploads
