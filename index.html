@@ -47,6 +47,12 @@
       </label>
       <label>Farbe <input type="color" id="color" value="#ff4d4d"></label>
       <label>Zoom <input type="range" id="scale" min="4" max="16" value="8"></label>
+      <label>Werkzeug
+        <select id="tool">
+          <option value="pen">Stift</option>
+          <option value="eraser">Radierer</option>
+        </select>
+      </label>
       <button id="clear">Leeren</button>
       <button id="download">Download</button>
       <button id="upload">Upload</button>
@@ -55,7 +61,7 @@
       <canvas id="canvas" width="64" height="64"></canvas>
       <div class="grid"></div>
     </div>
-    <div class="note">Linksklick: malen • Rechtsklick: radieren</div>
+    <div class="note">Finger/Linksklick: malen • Werkzeug „Radierer“ löscht</div>
   </section>
 
   <!-- Uploads -->
@@ -76,6 +82,7 @@
     const color=document.getElementById('color');
     const scale=document.getElementById('scale');
     const resolutionSelect=document.getElementById('resolution');
+    const toolSelect=document.getElementById('tool');
     const clearBtn=document.getElementById('clear');
     const downloadBtn=document.getElementById('download');
     const uploadBtn=document.getElementById('upload');
@@ -97,7 +104,6 @@
     setupCanvas(64);
 
     // Zeichnen / Radieren
-    canvas.addEventListener('contextmenu',e=>e.preventDefault());
     function getPixel(e){
       const rect=canvas.getBoundingClientRect();
       const x=Math.floor((e.clientX-rect.left)*canvas.width/rect.width);
@@ -108,12 +114,15 @@
     function erase(x,y){ctx.clearRect(x,y,1,1);}
     function drawHandler(e){
       const {x,y}=getPixel(e);
-      const right=e.button===2||e.buttons===2;
-      right?erase(x,y):paint(x,y);
+      if(toolSelect.value==="eraser"){ erase(x,y); }
+      else { paint(x,y); }
     }
     canvas.addEventListener('mousedown',e=>{drawing=true;drawHandler(e);});
     window.addEventListener('mouseup',()=>drawing=false);
     canvas.addEventListener('mousemove',e=>{if(drawing)drawHandler(e);});
+    canvas.addEventListener('touchstart',e=>{drawing=true;drawHandler(e.touches[0]);});
+    canvas.addEventListener('touchend',()=>drawing=false);
+    canvas.addEventListener('touchmove',e=>{if(drawing)drawHandler(e.touches[0]);});
 
     // Zoom
     scale.addEventListener('input',e=>{
@@ -151,14 +160,4 @@
                  uploads:document.getElementById('page-uploads'),
                  my:document.getElementById('page-my')};
     function showPage(name){
-      for(const key in pages){pages[key].style.display=(key===name)?'block':'none';}
-      document.querySelectorAll('nav button').forEach(b=>b.classList.remove('active'));
-      document.getElementById('nav-'+name).classList.add('active');
-      if(name!=='editor') renderGallery(name);
-    }
-    document.getElementById('nav-editor').onclick=()=>showPage('editor');
-    document.getElementById('nav-uploads').onclick=()=>showPage('uploads');
-    document.getElementById('nav-my').onclick=()=>showPage('my');
-
-    // Galerie rendern mit Likes
-    function renderGallery
+      for(const key in pages){pages[key].style.display=(key===name)?'block':'none
