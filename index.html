@@ -1,14 +1,164 @@
-<div class="toolbar">
-  <label>Resolution
-    <select id="resolution">
-      <option value="64">64×64</option>
-      <option value="42">42×42</option>
-      <option value="32">32×32</option>
-      <option value="16">16×16</option>
-    </select>
-  </label>
-  <label>Farbe <input type="color" id="color" value="#ff4d4d"></label>
-  <label>Zoom <input type="range" id="scale" min="4" max="16" value="8"></label>
-  <button id="clear">Leeren</button>
-  <button id="download">Download</button>
-</div>
+<!DOCTYPE html>
+<html lang="de">
+<head>
+  <meta charset="UTF-8" />
+  <title>Pixel Plattform</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <style>
+    :root { --scale: 8; }
+    body { background:#121212; color:#eaeaea; font-family:sans-serif; margin:0; padding:20px; }
+    h1 { text-align:center; }
+    nav { display:flex; gap:12px; justify-content:center; margin-bottom:20px; }
+    nav button { background:#1f1f1f; color:#fff; border:1px solid #333; padding:8px 12px; border-radius:6px; cursor:pointer; }
+    nav button.active { background:#333; }
+    .toolbar { display:flex; gap:12px; justify-content:center; margin-bottom:12px; flex-wrap:wrap; }
+    #canvasWrapper { margin:0 auto; border:2px solid #333; background:#1a1a1a; position:relative; image-rendering:pixelated; }
+    canvas { width:100%; height:100%; image-rendering:pixelated; display:block; }
+    .grid { position:absolute; inset:0; pointer-events:none;
+      background-image:linear-gradient(to right,rgba(255,255,255,0.06) 1px,transparent 1px),
+                       linear-gradient(to bottom,rgba(255,255,255,0.06) 1px,transparent 1px);
+      background-size:calc(var(--scale)*1px) calc(var(--scale)*1px); mix-blend-mode:screen; }
+    .gallery { display:grid; grid-template-columns:repeat(auto-fill,minmax(120px,1fr)); gap:12px; }
+    .gallery-item { position:relative; }
+    .gallery img { width:100%; image-rendering:pixelated; border:1px solid #333; background:#222; }
+    .like { position:absolute; bottom:6px; right:6px; background:#ff4d4d; color:#fff; border:none; border-radius:50%; width:32px; height:32px; cursor:pointer; }
+    .likes-count { position:absolute; bottom:6px; left:6px; font-size:12px; background:#0008; padding:2px 6px; border-radius:4px; }
+    .note { text-align:center; font-size:12px; opacity:0.7; margin-top:8px; }
+  </style>
+</head>
+<body>
+  <h1>Pixel Plattform</h1>
+  <nav>
+    <button id="nav-editor" class="active">Editor</button>
+    <button id="nav-uploads">Uploads</button>
+    <button id="nav-my">Meine Bilder</button>
+  </nav>
+
+  <!-- Editor -->
+  <section id="page-editor">
+    <div class="toolbar">
+      <label>Resolution
+        <select id="resolution">
+          <option value="64">64×64</option>
+          <option value="42">42×42</option>
+          <option value="32">32×32</option>
+          <option value="16">16×16</option>
+        </select>
+      </label>
+      <label>Farbe <input type="color" id="color" value="#ff4d4d"></label>
+      <label>Zoom <input type="range" id="scale" min="4" max="16" value="8"></label>
+      <button id="clear">Leeren</button>
+      <button id="download">Download</button>
+      <button id="upload">Upload</button>
+    </div>
+    <div id="canvasWrapper">
+      <canvas id="canvas" width="64" height="64"></canvas>
+      <div class="grid"></div>
+    </div>
+    <div class="note">Linksklick: malen • Rechtsklick: radieren</div>
+  </section>
+
+  <!-- Uploads -->
+  <section id="page-uploads" style="display:none">
+    <h2>Alle Uploads</h2>
+    <div class="gallery" id="gallery-uploads"></div>
+  </section>
+
+  <!-- Meine Bilder -->
+  <section id="page-my" style="display:none">
+    <h2>Meine Bilder</h2>
+    <div class="gallery" id="gallery-my"></div>
+  </section>
+
+  <script>
+    const canvas=document.getElementById('canvas');
+    const ctx=canvas.getContext('2d',{willReadFrequently:true});
+    const color=document.getElementById('color');
+    const scale=document.getElementById('scale');
+    const resolutionSelect=document.getElementById('resolution');
+    const clearBtn=document.getElementById('clear');
+    const downloadBtn=document.getElementById('download');
+    const uploadBtn=document.getElementById('upload');
+    let drawing=false;
+
+    // User-ID einmalig erzeugen
+    if(!localStorage.getItem('userId')){
+      localStorage.setItem('userId','user-'+Math.random().toString(36).substr(2,9));
+    }
+    const userId=localStorage.getItem('userId');
+
+    // Canvas Setup
+    function setupCanvas(size){
+      canvas.width=size; canvas.height=size;
+      document.getElementById('canvasWrapper').style.width=(size*scale.value)+"px";
+      document.getElementById('canvasWrapper').style.height=(size*scale.value)+"px";
+      ctx.clearRect(0,0,size,size);
+    }
+    setupCanvas(64);
+
+    // Zeichnen / Radieren
+    canvas.addEventListener('contextmenu',e=>e.preventDefault());
+    function getPixel(e){
+      const rect=canvas.getBoundingClientRect();
+      const x=Math.floor((e.clientX-rect.left)*canvas.width/rect.width);
+      const y=Math.floor((e.clientY-rect.top)*canvas.height/rect.height);
+      return {x,y};
+    }
+    function paint(x,y){ctx.fillStyle=color.value;ctx.fillRect(x,y,1,1);}
+    function erase(x,y){ctx.clearRect(x,y,1,1);}
+    function drawHandler(e){
+      const {x,y}=getPixel(e);
+      const right=e.button===2||e.buttons===2;
+      right?erase(x,y):paint(x,y);
+    }
+    canvas.addEventListener('mousedown',e=>{drawing=true;drawHandler(e);});
+    window.addEventListener('mouseup',()=>drawing=false);
+    canvas.addEventListener('mousemove',e=>{if(drawing)drawHandler(e);});
+
+    // Zoom
+    scale.addEventListener('input',e=>{
+      document.documentElement.style.setProperty('--scale',e.target.value);
+      document.getElementById('canvasWrapper').style.width=(canvas.width*e.target.value)+"px";
+      document.getElementById('canvasWrapper').style.height=(canvas.height*e.target.value)+"px";
+    });
+
+    // Clear
+    clearBtn.addEventListener('click',()=>ctx.clearRect(0,0,canvas.width,canvas.height));
+
+    // Download
+    downloadBtn.addEventListener('click',()=>{
+      const url=canvas.toDataURL('image/png');
+      window.open(url,'_blank'); // iOS-freundlich
+    });
+
+    // Resolution wechseln
+    resolutionSelect.addEventListener('change',()=>{
+      setupCanvas(parseInt(resolutionSelect.value));
+    });
+
+    // Uploads speichern
+    function saveUpload(){
+      const data=canvas.toDataURL('image/png');
+      const uploads=JSON.parse(localStorage.getItem('uploads')||'[]');
+      uploads.push({src:data,user:userId,likes:0});
+      localStorage.setItem('uploads',JSON.stringify(uploads));
+      alert("Bild hochgeladen!");
+    }
+    uploadBtn.addEventListener('click',saveUpload);
+
+    // Navigation
+    const pages={editor:document.getElementById('page-editor'),
+                 uploads:document.getElementById('page-uploads'),
+                 my:document.getElementById('page-my')};
+    function showPage(name){
+      for(const key in pages){pages[key].style.display=(key===name)?'block':'none';}
+      document.querySelectorAll('nav button').forEach(b=>b.classList.remove('active'));
+      document.getElementById('nav-'+name).classList.add('active');
+      if(name!=='editor') renderGallery(name);
+    }
+    document.getElementById('nav-editor').onclick=()=>showPage('editor');
+    document.getElementById('nav-uploads').onclick=()=>showPage('uploads');
+    document.getElementById('nav-my').onclick=()=>showPage('my');
+
+    // Galerie rendern mit Likes
+    function renderGallery
