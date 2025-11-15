@@ -1,54 +1,102 @@
-linear-gradient(to bottom,rgba(255,255,255,0.06) 1px,transparent 1px);
-      background-size:calc(var(--scale)*1px) calc(var(--scale)*1px); mix-blend-mode:screen; }
-    .gallery { display:grid; grid-template-columns:repeat(auto-fill,minmax(120px,1fr)); gap:12px; }
-    .gallery img { width:100%; image-rendering:pixelated; border:1px solid #333; background:#222; }
-    .gallery .item { background:#222; border:1px solid #333; padding:4px; text-align:center; }
-    .gallery img { width:100%; image-rendering:pixelated; }
-    .gallery button { margin-top:4px; background:#444; color:#fff; border:none; padding:4px 8px; cursor:pointer; border-radius:4px; }
-    .note { text-align:center; font-size:12px; opacity:0.7; margin-top:8px; }
+2,27 @@
+<html lang="de">
+<head>
+  <meta charset="UTF-8">
+  <title>Pixel Editor</title>
+  <title>Pixel Editor Schwarz</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <style>
+    :root { --scale: 8; }
+    body { background:#121212; color:#eaeaea; font-family:sans-serif; margin:0; padding:20px; }
+    h1 { text-align:center; }
+    .toolbar { display:flex; gap:12px; justify-content:center; margin-bottom:12px; flex-wrap:wrap; }
+    body { background:#000; color:#eaeaea; font-family:sans-serif; margin:0; padding:20px; }
+    h1 { text-align:center; color:#fff; }
+    .toolbar {
+      display:flex; gap:20px; justify-content:center; flex-wrap:wrap;
+      margin:20px auto; font-size:16px;
+    }
+    .toolbar label, .toolbar button {
+      background:#111; color:#fff; padding:6px 10px; border-radius:6px;
+    }
+    .toolbar button { cursor:pointer; border:1px solid #333; }
+    #canvasWrapper {
+      margin:0 auto;
+      border:2px solid #333;
+      background:#1a1a1a;
+      width:512px; /* wird per JS überschrieben */
+      height:512px;
+      margin:0 auto; border:2px solid #444; background:#111;
+      width:512px; height:512px;
+    }
+    canvas {
+      width:100%;
+      height:100%;
+      image-rendering:pixelated;
+      display:block;
+      width:100%; height:100%; image-rendering:pixelated; display:block;
+      background:#000;
+    }
   </style>
 </head>
-@@ -69,6 +71,9 @@ <h2>Meine Bilder</h2>
-    const uploadBtn=document.getElementById('upload');
-    let drawing=false;
+@@ -72,7 +74,6 @@ <h1>Pixel Editor</h1>
+    }
+    setupCanvas(64);
 
-    // Speicher nur im RAM
-    let uploads=[];
+    // Umschalten über Dropdown
+    resolutionSelect.addEventListener('change',()=>{
+      setupCanvas(parseInt(resolutionSelect.value));
+    });
+@@ -86,4 +87,51 @@ <h1>Pixel Editor</h1>
+    }
 
-    canvas.addEventListener('contextmenu',e=>e.preventDefault());
-    function getPixel(e){
+    // Zeichnen / Radieren
+    function paint(x
+    function paint(x,y){ctx.fillStyle=color.value;ctx.fillRect(x,y,1,1);}
+    function erase(x,y){ctx.clearRect(x,y,1,1);}
+    function drawHandler(e){
+      const {x,y}=getPixel(e);
+      if(toolSelect.value==="eraser"){ erase(x,y); }
+      else { paint(x,y); }
+    }
+
+    // Maussteuerung
+    canvas.addEventListener('mousedown',e=>{drawing=true;drawHandler(e);});
+    window.addEventListener('mouseup',()=>drawing=false);
+    canvas.addEventListener('mousemove',e=>{if(drawing)drawHandler(e);});
+
+    // Touchsteuerung
+    canvas.addEventListener('touchstart',e=>{
+      drawing=true;
       const rect=canvas.getBoundingClientRect();
-@@ -91,12 +96,10 @@ <h2>Meine Bilder</h2>
-      a.click();
+      const x=Math.floor((e.touches[0].clientX-rect.left)*canvas.width/rect.width);
+      const y=Math.floor((e.touches[0].clientY-rect.top)*canvas.height/rect.height);
+      if(toolSelect.value==="eraser"){ erase(x,y); } else { paint(x,y); }
+    });
+    canvas.addEventListener('touchmove',e=>{
+      if(drawing){
+        const rect=canvas.getBoundingClientRect();
+        const x=Math.floor((e.touches[0].clientX-rect.left)*canvas.width/rect.width);
+        const y=Math.floor((e.touches[0].clientY-rect.top)*canvas.height/rect.height);
+        if(toolSelect.value==="eraser"){ erase(x,y); } else { paint(x,y); }
+      }
+    });
+    canvas.addEventListener('touchend',()=>drawing=false);
+
+    // Zoom
+    scale.addEventListener('input',e=>{
+      document.getElementById('canvasWrapper').style.width=(canvas.width*e.target.value)+"px";
+      document.getElementById('canvasWrapper').style.height=(canvas.height*e.target.value)+"px";
     });
 
-    // Uploads speichern in LocalStorage
-    // Uploads nur im Speicher
-    function saveUpload(mine=false){
-      const data=canvas.toDataURL('image/png');
-      const uploads=JSON.parse(localStorage.getItem('uploads')||'[]');
-      uploads.push({src:data,mine});
-      localStorage.setItem('uploads',JSON.stringify(uploads));
-      uploads.push({id:Date.now(),src:data,mine,likes:0});
-      alert("Bild hochgeladen!");
-    }
-    uploadBtn.addEventListener('click',()=>saveUpload(true));
-@@ -117,15 +120,10 @@ <h2>Meine Bilder</h2>
+    // Leeren
+    clearBtn.addEventListener('click',()=>ctx.clearRect(0,0,canvas.width,canvas.height));
 
-    // Galerie rendern
-    function renderGallery(name){
-      const uploads=JSON.parse(localStorage.getItem('uploads')||'[]');
-      const container=document.getElementById('gallery-'+name);
-      container.innerHTML='';
-      uploads.filter(u=>name==='uploads'||u.mine).forEach(u=>{
-        const item=document.createElement('div');
-        item.className='item';
-        const img=document.createElement('img');
-        img.src=u.src;
-        container.appendChild(img);
-      });
-    }
+    // Download
+    downloadBtn.addEventListener('click',()=>{
+      const url=canvas.toDataURL('image/png');
+      window.open(url,'_blank');
+    });
   </script>
 </body>
 </html>
-        img
