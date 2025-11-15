@@ -2,17 +2,17 @@
 <html lang="de">
 <head>
   <meta charset="UTF-8" />
-  <title>Pixel64 Plattform</title>
+  <title>Pixel Plattform</title>
   <meta name="viewport" content="width=device-width, initial-scale=1" />
   <style>
-    :root { --scale: 8; }
+    :root { --scale: 16; }
     body { background:#121212; color:#eaeaea; font-family:sans-serif; margin:0; padding:20px; }
     h1 { text-align:center; }
     nav { display:flex; gap:12px; justify-content:center; margin-bottom:20px; }
     nav button { background:#1f1f1f; color:#fff; border:1px solid #333; padding:8px 12px; border-radius:6px; cursor:pointer; }
     nav button.active { background:#333; }
     .toolbar { display:flex; gap:12px; justify-content:center; margin-bottom:12px; flex-wrap:wrap; }
-    #canvasWrapper { margin:0 auto; width:calc(64*var(--scale)*1px); height:calc(64*var(--scale)*1px); border:2px solid #333; background:#1a1a1a; position:relative; }
+    #canvasWrapper { margin:0 auto; width:calc(var(--res)*var(--scale)*1px); height:calc(var(--res)*var(--scale)*1px); border:2px solid #333; background:#1a1a1a; position:relative; }
     canvas { width:100%; height:100%; image-rendering:pixelated; display:block; }
     .grid { position:absolute; inset:0; pointer-events:none;
       background-image:linear-gradient(to right,rgba(255,255,255,0.06) 1px,transparent 1px),
@@ -26,7 +26,7 @@
   </style>
 </head>
 <body>
-  <h1>Pixel64 Plattform</h1>
+  <h1>Pixel Plattform</h1>
   <nav>
     <button id="nav-editor" class="active">Editor</button>
     <button id="nav-uploads">Uploads</button>
@@ -37,7 +37,16 @@
   <section id="page-editor">
     <div class="toolbar">
       <label>Farbe <input type="color" id="color" value="#ff4d4d"></label>
-      <label>Zoom <input type="range" id="scale" min="4" max="16" value="8"></label>
+      <label>Zoom <input type="range" id="scale" min="4" max="20" value="16"></label>
+      <label>Resolution 
+        <select id="resolution">
+          <option value="16">16×16</option>
+          <option value="32">32×32</option>
+          <option value="64" selected>64×64</option>
+        </select>
+      </label>
+      <button id="tool-pencil">Stift</button>
+      <button id="tool-eraser">Radierer</button>
       <button id="clear">Leeren</button>
       <button id="download">Download</button>
       <button id="upload">Upload</button>
@@ -46,7 +55,7 @@
       <canvas id="canvas" width="64" height="64"></canvas>
       <div class="grid"></div>
     </div>
-    <div class="note">Linksklick: malen • Rechtsklick: radieren</div>
+    <div class="note">Werkzeug auswählen: Stift oder Radierer</div>
   </section>
 
   <!-- Uploads -->
@@ -66,37 +75,64 @@
     const ctx=canvas.getContext('2d',{willReadFrequently:true});
     const color=document.getElementById('color');
     const scale=document.getElementById('scale');
+    const resolution=document.getElementById('resolution');
     const clearBtn=document.getElementById('clear');
     const downloadBtn=document.getElementById('download');
     const uploadBtn=document.getElementById('upload');
     let drawing=false;
+    let currentTool='pencil';
 
     // Speicher nur im RAM
     let uploads=[];
 
-    canvas.addEventListener('contextmenu',e=>e.preventDefault());
+    // Werkzeug
+    document.getElementById('tool-pencil').onclick=()=>currentTool='pencil';
+    document.getElementById('tool-eraser').onclick=()=>currentTool='eraser';
+
+    // Pixelberechnung
     function getPixel(e){
       const rect=canvas.getBoundingClientRect();
       const x=Math.floor((e.clientX-rect.left)*canvas.width/rect.width);
       const y=Math.floor((e.clientY-rect.top)*canvas.height/rect.height);
-      return {x:Math.max(0,Math.min(63,x)),y:Math.max(0,Math.min(63,y))};
+      return {x:Math.max(0,Math.min(canvas.width-1,x)),y:Math.max(0,Math.min(canvas.height-1,y))};
     }
     function paint(x,y){ctx.fillStyle=color.value;ctx.fillRect(x,y,1,1);}
     function erase(x,y){ctx.clearRect(x,y,1,1);}
-    function drawHandler(e){const {x,y}=getPixel(e);const right=e.button===2||e.buttons===2;right?erase(x,y):paint(x,y);}
+    function drawHandler(e){
+      const {x,y}=getPixel(e);
+      if(currentTool==='eraser'){ erase(x,y); }
+      else { paint(x,y); }
+    }
+
     canvas.addEventListener('mousedown',e=>{drawing=true;drawHandler(e);});
     window.addEventListener('mouseup',()=>drawing=false);
     canvas.addEventListener('mousemove',e=>{if(drawing)drawHandler(e);});
-    scale.addEventListener('input',e=>document.documentElement.style.setProperty('--scale',e.target.value));
-    clearBtn.addEventListener('click',()=>ctx.clearRect(0,0,64,64));
+
+    // Zoom
+    scale.addEventListener('input',e=>{
+      document.documentElement.style.setProperty('--scale',e.target.value);
+    });
+
+    // Resolution ändern
+    resolution.addEventListener('change',e=>{
+      const res=parseInt(e.target.value);
+      canvas.width=res;
+      canvas.height=res;
+      document.documentElement.style.setProperty('--res',res);
+      ctx.clearRect(0,0,res,res);
+    });
+    // Initial setzen
+    document.documentElement.style.setProperty('--res',64);
+
+    // Buttons
+    clearBtn.addEventListener('click',()=>ctx.clearRect(0,0,canvas.width,canvas.height));
     downloadBtn.addEventListener('click',()=>{
       const a=document.createElement('a');
-      a.download='pixel64.png';
+      a.download='pixel.png';
       a.href=canvas.toDataURL('image/png');
       a.click();
     });
 
-    // Uploads nur im Speicher
     function saveUpload(mine=false){
       const data=canvas.toDataURL('image/png');
       uploads.push({id:Date.now(),src:data,mine,likes:0});
@@ -118,7 +154,7 @@
     document.getElementById('nav-uploads').onclick=()=>showPage('uploads');
     document.getElementById('nav-my').onclick=()=>showPage('my');
 
-    // Galerie rendern
+    // Galerie
     function renderGallery(name){
       const container=document.getElementById('gallery-'+name);
       container.innerHTML='';
@@ -126,4 +162,18 @@
         const item=document.createElement('div');
         item.className='item';
         const img=document.createElement('img');
-        img
+        img.src=u.src;
+        item.appendChild(img);
+
+        if(name==='uploads' && !u.mine){
+          const likeBtn=document.createElement('button');
+          likeBtn.textContent=`❤️ ${u.likes}`;
+          likeBtn.onclick=()=>{u.likes++; renderGallery(name);};
+          item.appendChild(likeBtn);
+        }
+        container.appendChild(item);
+      });
+    }
+  </script>
+</body>
+</html>
