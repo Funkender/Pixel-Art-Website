@@ -1,1 +1,74 @@
 
+<div class="toolbar">
+  <label>Resolution
+    <select id="resolution">
+      <option value="64">64×64</option>
+      <option value="42">42×42</option>
+      <option value="32">32×32</option>
+      <option value="16">16×16</option>
+    </select>
+  </label>
+  <label>Farbe <input type="color" id="color" value="#ff4d4d"></label>
+  <label>Zoom <input type="range" id="scale" min="4" max="16" value="8"></label>
+  <button id="clear">Leeren</button>
+  <button id="download">Download</button>
+</div>
+
+<script>
+  const canvas=document.getElementById('canvas');
+  const ctx=canvas.getContext('2d',{willReadFrequently:true});
+  const resolutionSelect=document.getElementById('resolution');
+  const scale=document.getElementById('scale');
+  const clearBtn=document.getElementById('clear');
+  const downloadBtn=document.getElementById('download');
+  const color=document.getElementById('color');
+  let drawing=false;
+
+  // Funktion zum Neuaufbau des Canvas
+  function setupCanvas(size){
+    canvas.width=size;
+    canvas.height=size;
+    document.getElementById('canvasWrapper').style.width=(size*scale.value)+"px";
+    document.getElementById('canvasWrapper').style.height=(size*scale.value)+"px";
+    ctx.clearRect(0,0,size,size);
+  }
+
+  // Standard: 64×64
+  setupCanvas(64);
+
+  // Umschalten über Dropdown
+  resolutionSelect.addEventListener('change',()=>{
+    setupCanvas(parseInt(resolutionSelect.value));
+  });
+
+  // Malen / Radieren
+  canvas.addEventListener('contextmenu',e=>e.preventDefault());
+  function getPixel(e){
+    const rect=canvas.getBoundingClientRect();
+    const x=Math.floor((e.clientX-rect.left)*canvas.width/rect.width);
+    const y=Math.floor((e.clientY-rect.top)*canvas.height/rect.height);
+    return {x,y};
+  }
+  function paint(x,y){ctx.fillStyle=color.value;ctx.fillRect(x,y,1,1);}
+  function erase(x,y){ctx.clearRect(x,y,1,1);}
+  function drawHandler(e){const {x,y}=getPixel(e);const right=e.button===2||e.buttons===2;right?erase(x,y):paint(x,y);}
+  canvas.addEventListener('mousedown',e=>{drawing=true;drawHandler(e);});
+  window.addEventListener('mouseup',()=>drawing=false);
+  canvas.addEventListener('mousemove',e=>{if(drawing)drawHandler(e);});
+
+  // Zoom
+  scale.addEventListener('input',e=>{
+    document.documentElement.style.setProperty('--scale',e.target.value);
+    document.getElementById('canvasWrapper').style.width=(canvas.width*e.target.value)+"px";
+    document.getElementById('canvasWrapper').style.height=(canvas.height*e.target.value)+"px";
+  });
+
+  // Leeren
+  clearBtn.addEventListener('click',()=>ctx.clearRect(0,0,canvas.width,canvas.height));
+
+  // Download (iOS-freundlich)
+  downloadBtn.addEventListener('click',()=>{
+    const url=canvas.toDataURL('image/png');
+    window.open(url,'_blank');
+  });
+</script>
