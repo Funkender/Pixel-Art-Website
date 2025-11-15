@@ -3,7 +3,7 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
-<title>Pixel Editor Grau-Blau</title>
+<title>Pixel Editor Grau-Blau Neon</title>
 <style>
   body {
     font-family:sans-serif;
@@ -16,13 +16,13 @@
     display:grid;
     margin:10px auto;
     touch-action:none;
-    background:#fff; /* Rasterfläche weiß */
+    background:#ccc; /* Rasterfläche hellgrau */
   }
   .cell {
     width:20px;
     height:20px;
-    border:1px solid #aaa; /* graue Linien */
-    background:#fff;       /* Zellen weiß */
+    border:1px solid #00f0ff; /* helles Neon-Blau für Linien */
+    background:#ccc;          /* Zellen hellgrau */
   }
   .controls {
     display:flex;
@@ -53,7 +53,7 @@
 </style>
 </head>
 <body>
-<h2>Pixel Editor Grau-Blau</h2>
+<h2>Pixel Editor Grau-Blau Neon</h2>
 
 <div class="controls">
   <select id="size">
@@ -88,9 +88,9 @@ function makeGrid(n){
     const cell=document.createElement('div');
     cell.className='cell';
     cell.addEventListener('click',()=>{
-      if(cell.style.backgroundColor && cell.style.backgroundColor!=='' && cell.style.backgroundColor!=='transparent' && cell.style.backgroundColor!=='rgb(255, 255, 255)'){
-        // zurück auf weiß
-        cell.style.backgroundColor='#fff';
+      if(cell.style.backgroundColor && cell.style.backgroundColor!=='' && cell.style.backgroundColor!=='transparent' && cell.style.backgroundColor!=='rgb(204, 204, 204)'){
+        // zurück auf hellgrau
+        cell.style.backgroundColor='#ccc';
       } else {
         cell.style.backgroundColor=colorSel.value;
       }
@@ -108,7 +108,7 @@ downloadBtn.onclick=()=>{
   const ctx=canvas.getContext('2d');
   [...gridEl.children].forEach((cell,i)=>{
     const x=i%gridSize, y=Math.floor(i/gridSize);
-    ctx.fillStyle=cell.style.backgroundColor||'#fff';
+    ctx.fillStyle=cell.style.backgroundColor||'#ccc';
     ctx.fillRect(x,y,1,1);
   });
   const url=canvas.toDataURL();
