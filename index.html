@@ -160,4 +160,9 @@
                  uploads:document.getElementById('page-uploads'),
                  my:document.getElementById('page-my')};
     function showPage(name){
-      for(const key in pages){pages[key].style.display=(key===name)?'block':'none
+      for(const key in pages){pages[key].style.display=(key===name)?'block':'none';}
+      document.querySelectorAll('nav button').forEach(b=>b.classList.remove('active'));
+      document.getElementById('nav-'+name).classList.add('active');
+      if(name!=='editor') renderGallery(name);
+    }
+   
