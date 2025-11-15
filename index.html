@@ -70,7 +70,6 @@
   </section>
 
   <script>
-    // Canvas + UI
     const canvas = document.getElementById('canvas');
     const ctx = canvas.getContext('2d', { willReadFrequently: true });
     const color = document.getElementById('color');
@@ -84,14 +83,9 @@
 
     let drawing = false;
     let currentTool = 'pencil';
-
-    // Speicher nur im RAM
     let uploads = [];
 
-    // Kontextmenü deaktivieren (damit RMB nie stört)
-    canvas.addEventListener('contextmenu', e => e.preventDefault());
-
-    // Werkzeuge mit Active-Style
+    // Werkzeug-Auswahl
     function setTool(name) {
       currentTool = name;
       toolPencil.classList.toggle('active', name === 'pencil');
@@ -105,51 +99,46 @@
       const rect = canvas.getBoundingClientRect();
       const x = Math.floor((e.clientX - rect.left) * canvas.width / rect.width);
       const y = Math.floor((e.clientY - rect.top) * canvas.height / rect.height);
-      return {
-        x: Math.max(0, Math.min(canvas.width - 1, x)),
-        y: Math.max(0, Math.min(canvas.height - 1, y))
-      };
+      return { x: Math.max(0, Math.min(canvas.width - 1, x)), y: Math.max(0, Math.min(canvas.height - 1, y)) };
     }
 
-    // Werkzeuge anwenden
+    // Werkzeuge
     function paint(x, y) { ctx.fillStyle = color.value; ctx.fillRect(x, y, 1, 1); }
     function erase(x, y) { ctx.clearRect(x, y, 1, 1); }
 
-    // Zeichnen: nur LMB, kontinuierlich beim Halten
     function drawHandler(e) {
       const { x, y } = getPixel(e);
       if (currentTool === 'eraser') erase(x, y);
       else paint(x, y);
     }
 
+    // Zeichnen mit LMB gedrückt halten
     canvas.addEventListener('mousedown', e => {
-      if (e.button === 0) { // nur linke Taste
+      if (e.button === 0) {
         drawing = true;
         drawHandler(e);
       }
     });
-    window.addEventListener('mouseup', () => { drawing = false; });
+    window.addEventListener('mouseup', () => drawing = false);
     canvas.addEventListener('mousemove', e => {
-      if (drawing && (e.buttons & 1) === 1) { // LMB gedrückt
+      if (drawing && (e.buttons & 1)) {
         drawHandler(e);
       }
     });
 
-    // Zoom (CSS Scale)
+    // Zoom
     scale.addEventListener('input', e => {
       document.documentElement.style.setProperty('--scale', e.target.value);
     });
 
-    // Resolution ändern: Canvas, Wrapper und Grid synchron halten
+    // Resolution ändern
     function setResolution(res) {
       canvas.width = res;
       canvas.height = res;
       document.documentElement.style.setProperty('--res', res);
-      // Inhalt leeren (einfacher Reset; falls du skalieren willst, kann ich dir ein Resample einbauen)
       ctx.clearRect(0, 0, res, res);
     }
     resolution.addEventListener('input', e => setResolution(parseInt(e.target.value, 10)));
-    // Initiale Werte
     setResolution(parseInt(resolution.value, 10));
 
     // Buttons
@@ -177,35 +166,4 @@
     function showPage(name) {
       for (const key in pages) pages[key].style.display = (key === name) ? 'block' : 'none';
       document.querySelectorAll('nav button').forEach(b => b.classList.remove('active'));
-      document.getElementById('nav-' + name).classList.add('active');
-      if (name !== 'editor') renderGallery(name);
-    }
-    document.getElementById('nav-editor').onclick = () => showPage('editor');
-    document.getElementById('nav-uploads').onclick = () => showPage('uploads');
-    document.getElementById('nav-my').onclick = () => showPage('my');
-
-    // Galerie mit Like-Button (für alle Bilder, auch eigene)
-    function renderGallery(name) {
-      const container = document.getElementById('gallery-' + name);
-      container.innerHTML = '';
-      uploads
-        .filter(u => name === 'uploads' || u.mine)
-        .forEach(u => {
-          const item = document.createElement('div');
-          item.className = 'item';
-
-          const img = document.createElement('img');
-          img.src = u.src;
-          item.appendChild(img);
-
-          const likeBtn = document.createElement('button');
-          likeBtn.textContent = `❤️ ${u.likes}`;
-          likeBtn.onclick = () => { u.likes++; likeBtn.textContent = `❤️ ${u.likes}`; };
-          item.appendChild(likeBtn);
-
-          container.appendChild(item);
-        });
-    }
-  </script>
-</body>
-</html>
+     
