@@ -1,97 +1,14 @@
-<!DOCTYPE html>
-<html lang="de">
-<head>
-  <meta charset="UTF-8" />
-  <title>Pixel Plattform</title>
-  <meta name="viewport" content="width=device-width, initial-scale=1" />
-  <style>
-    :root { --scale: 8; }
-    body { background:#121212; color:#eaeaea; font-family:sans-serif; margin:0; padding:20px; }
-    h1 { text-align:center; }
-    nav { display:flex; gap:12px; justify-content:center; margin-bottom:20px; }
-    nav button { background:#1f1f1f; color:#fff; border:1px solid #333; padding:8px 12px; border-radius:6px; cursor:pointer; }
-    nav button.active { background:#333; }
-    .toolbar { display:flex; gap:12px; justify-content:center; margin-bottom:12px; flex-wrap:wrap; }
-    #canvasWrapper { margin:0 auto; border:2px solid #333; background:#1a1a1a; position:relative; image-rendering:pixelated; }
-    canvas { width:100%; height:100%; image-rendering:pixelated; display:block; }
-    .grid { position:absolute; inset:0; pointer-events:none;
-      background-image:linear-gradient(to right,rgba(255,255,255,0.06) 1px,transparent 1px),
-                       linear-gradient(to bottom,rgba(255,255,255,0.06) 1px,transparent 1px);
-      background-size:calc(var(--scale)*1px) calc(var(--scale)*1px); mix-blend-mode:screen; }
-    .note { text-align:center; font-size:12px; opacity:0.7; margin-top:8px; }
-  </style>
-</head>
-<body>
-  <h1>Pixel Plattform</h1>
-
-  <div class="toolbar">
-    <label>Resolution
-      <select id="resolution">
-        <option value="64">64×64</option>
-        <option value="42">42×42</option>
-        <option value="32">32×32</option>
-        <option value="16">16×16</option>
-      </select>
-    </label>
-    <label>Farbe <input type="color" id="color" value="#ff4d4d"></label>
-    <label>Zoom <input type="range" id="scale" min="4" max="16" value="8"></label>
-    <button id="clear">Leeren</button>
-    <button id="download">Download</button>
-  </div>
-
-  <div id="canvasWrapper">
-    <canvas id="canvas" width="64" height="64"></canvas>
-    <div class="grid"></div>
-  </div>
-  <div class="note">Linksklick: malen • Rechtsklick: radieren</div>
-
-  <script>
-    let canvas=document.getElementById('canvas');
-    let ctx=canvas.getContext('2d',{willReadFrequently:true});
-    const color=document.getElementById('color');
-    const scale=document.getElementById('scale');
-    const clearBtn=document.getElementById('clear');
-    const downloadBtn=document.getElementById('download');
-    const resolutionSelect=document.getElementById('resolution');
-    let drawing=false;
-
-    function setupCanvas(size){
-      canvas.width=size; canvas.height=size;
-      document.getElementById('canvasWrapper').style.width=(size*scale.value)+"px";
-      document.getElementById('canvasWrapper').style.height=(size*scale.value)+"px";
-      ctx.clearRect(0,0,size,size);
-    }
-    setupCanvas(64);
-
-    canvas.addEventListener('contextmenu',e=>e.preventDefault());
-    function getPixel(e){
-      const rect=canvas.getBoundingClientRect();
-      const x=Math.floor((e.clientX-rect.left)*canvas.width/rect.width);
-      const y=Math.floor((e.clientY-rect.top)*canvas.height/rect.height);
-      return {x:Math.max(0,Math.min(canvas.width-1,x)),y:Math.max(0,Math.min(canvas.height-1,y))};
-    }
-    function paint(x,y){ctx.fillStyle=color.value;ctx.fillRect(x,y,1,1);}
-    function erase(x,y){ctx.clearRect(x,y,1,1);}
-    function drawHandler(e){const {x,y}=getPixel(e);const right=e.button===2||e.buttons===2;right?erase(x,y):paint(x,y);}
-    canvas.addEventListener('mousedown',e=>{drawing=true;drawHandler(e);});
-    window.addEventListener('mouseup',()=>drawing=false);
-    canvas.addEventListener('mousemove',e=>{if(drawing)drawHandler(e);});
-
-    scale.addEventListener('input',e=>{
-      document.documentElement.style.setProperty('--scale',e.target.value);
-      document.getElementById('canvasWrapper').style.width=(canvas.width*e.target.value)+"px";
-      document.getElementById('canvasWrapper').style.height=(canvas.height*e.target.value)+"px";
-    });
-    clearBtn.addEventListener('click',()=>ctx.clearRect(0,0,canvas.width,canvas.height));
-
-    downloadBtn.addEventListener('click',()=>{
-      const url=canvas.toDataURL('image/png');
-      window.open(url,'_blank'); // iOS-freundlich
-    });
-
-    resolutionSelect.addEventListener('change',()=>{
-      setupCanvas(parseInt(resolutionSelect.value));
-    });
-  </script>
-</body>
-</html>
+<div class="toolbar">
+  <label>Resolution
+    <select id="resolution">
+      <option value="64">64×64</option>
+      <option value="42">42×42</option>
+      <option value="32">32×32</option>
+      <option value="16">16×16</option>
+    </select>
+  </label>
+  <label>Farbe <input type="color" id="color" value="#ff4d4d"></label>
+  <label>Zoom <input type="range" id="scale" min="4" max="16" value="8"></label>
+  <button id="clear">Leeren</button>
+  <button id="download">Download</button>
+</div>
