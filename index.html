@@ -19,7 +19,9 @@
                        linear-gradient(to bottom,rgba(255,255,255,0.06) 1px,transparent 1px);
       background-size:calc(var(--scale)*1px) calc(var(--scale)*1px); mix-blend-mode:screen; }
     .gallery { display:grid; grid-template-columns:repeat(auto-fill,minmax(120px,1fr)); gap:12px; }
-    .gallery img { width:100%; image-rendering:pixelated; border:1px solid #333; background:#222; }
+    .gallery .item { background:#222; border:1px solid #333; padding:4px; text-align:center; }
+    .gallery img { width:100%; image-rendering:pixelated; }
+    .gallery button { margin-top:4px; background:#444; color:#fff; border:none; padding:4px 8px; cursor:pointer; border-radius:4px; }
     .note { text-align:center; font-size:12px; opacity:0.7; margin-top:8px; }
   </style>
 </head>
@@ -69,6 +71,9 @@
     const uploadBtn=document.getElementById('upload');
     let drawing=false;
 
+    // Speicher nur im RAM
+    let uploads=[];
+
     canvas.addEventListener('contextmenu',e=>e.preventDefault());
     function getPixel(e){
       const rect=canvas.getBoundingClientRect();
@@ -91,12 +96,10 @@
       a.click();
     });
 
-    // Uploads speichern in LocalStorage
+    // Uploads nur im Speicher
     function saveUpload(mine=false){
       const data=canvas.toDataURL('image/png');
-      const uploads=JSON.parse(localStorage.getItem('uploads')||'[]');
-      uploads.push({src:data,mine});
-      localStorage.setItem('uploads',JSON.stringify(uploads));
+      uploads.push({id:Date.now(),src:data,mine,likes:0});
       alert("Bild hochgeladen!");
     }
     uploadBtn.addEventListener('click',()=>saveUpload(true));
@@ -117,15 +120,10 @@
 
     // Galerie rendern
     function renderGallery(name){
-      const uploads=JSON.parse(localStorage.getItem('uploads')||'[]');
       const container=document.getElementById('gallery-'+name);
       container.innerHTML='';
       uploads.filter(u=>name==='uploads'||u.mine).forEach(u=>{
+        const item=document.createElement('div');
+        item.className='item';
         const img=document.createElement('img');
-        img.src=u.src;
-        container.appendChild(img);
-      });
-    }
-  </script>
-</body>
-</html>
+        img
