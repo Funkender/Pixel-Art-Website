@@ -1,232 +1,503 @@
 <!DOCTYPE html>
 <html lang="de">
 <head>
-  <meta charset="UTF-8">
-  <title>Pixel Editor Schwarz</title>
-  <meta charset="UTF-8" />
-  <title>Pixel64 Plattform</title>
+  <meta charset="utf-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Pixel Editor 16x16 / 32x32 mit Galerie</title>
   <style>
-    :root { --scale: 8; }
-    body { background:#000; color:#eaeaea; font-family:sans-serif; margin:0; padding:20px; }
-    h1 { text-align:center; color:#fff; }
-    .toolbar {
-      display:flex; gap:20px; justify-content:center; flex-wrap:wrap;
-      margin:20px auto; font-size:16px;
+    :root {
+      --bg: #0f1220;
+      --panel: #171a2b;
+      --text: #eef1ff;
+      --muted: #aab0d0;
+      --accent: #7aa2ff;
+      --danger: #ff6b6b;
+      --ok: #58cf86;
+      --grid: #2a2f47;
     }
-    .toolbar label, .toolbar button {
-      background:#111; color:#fff; padding:6px 10px; border-radius:6px;
+    * { box-sizing: border-box }
+    html, body {
+      height: 100%;
+      margin: 0;
+      background: var(--bg);
+      color: var(--text);
+      font-family: system-ui, -apple-system, Segoe UI, Roboto, Inter, sans-serif;
     }
-    .toolbar button { cursor:pointer; border:1px solid #333; }
-    #canvasWrapper {
-      margin:0 auto; border:2px solid #444; background:#111;
-      width:512px; height:512px;
+
+    header {
+      padding: 16px;
+      border-bottom: 1px solid #22263e;
+      background: linear-gradient(180deg, #12162a, #0f1220 60%);
+      position: sticky;
+      top: 0;
+      z-index: 10;
+    }
+    header .nav {
+      display: flex;
+      gap: 12px;
+      flex-wrap: wrap;
+      align-items: center;
+      justify-content: space-between;
+    }
+    .tabs {
+      display: flex;
+      gap: 8px;
+      flex-wrap: wrap;
+    }
+    .tab-btn {
+      appearance: none;
+      border: 1px solid #2a2f47;
+      background: #14182a;
+      color: var(--text);
+      padding: 8px 12px;
+      border-radius: 8px;
+      cursor: pointer;
+      font-weight: 600;
+    }
+    .tab-btn.active {
+      border-color: var(--accent);
+      outline: 2px solid color-mix(in oklab, var(--accent) 60%, transparent);
+      background: #101428;
+    }
+
+    main {
+      padding: 16px;
+      max-width: 1100px;
+      margin: 0 auto;
+    }
+
+    .panel {
+      background: var(--panel);
+      border: 1px solid #22263e;
+      border-radius: 12px;
+      padding: 16px;
+    }
+    .grid-row {
+      display: grid;
+      grid-template-columns: 1fr 320px;
+      gap: 16px;
+    }
+    @media (max-width: 980px) {
+      .grid-row { grid-template-columns: 1fr }
+    }
+
+    .controls {
+      display: grid;
+      gap: 12px;
+    }
+    .controls .group {
+      display: grid;
+      gap: 8px;
+    }
+    .controls label {
+      font-size: 13px;
+      color: var(--muted);
+    }
+    .controls input[type="color"] {
+      width: 48px;
+      height: 36px;
+      padding: 0;
+      border: 1px solid #2a2f47;
+      border-radius: 8px;
+      background: #0c0f1f;
+    }
+    .controls select, .controls button, .controls input[type="file"] {
+      appearance: none;
+      border: 1px solid #2a2f47;
+      background: #14182a;
+      color: var(--text);
+      padding: 8px 12px;
+      border-radius: 8px;
+      cursor: pointer;
+      font-weight: 600;
+    }
+    .controls button {
+      display: inline-flex;
+      align-items: center;
+      gap: 8px;
+    }
+    .controls .row {
+      display: flex;
+      gap: 8px;
+      flex-wrap: wrap;
+    }
+    .hint {
+      font-size: 12px;
+      color: var(--muted);
+    }
+
+    .canvas-wrap {
+      position: relative;
+      display: inline-block;
+      border: 1px solid #22263e;
+      border-radius: 12px;
+      overflow: hidden;
+      background: #0c0f1f;
     }
     canvas {
-      width:100%; height:100%; image-rendering:pixelated; display:block;
-      background:#000;
+      display: block;
+      image-rendering: pixelated;
+      image-rendering: crisp-edges;
+      width: 512px;
+      height: 512px;
     }
-    body { background:#121212; color:#eaeaea; font-family:sans-serif; margin:0; padding:20px; }
-    h1 { text-align:center; }
-    nav { display:flex; gap:12px; justify-content:center; margin-bottom:20px; }
-    nav button { background:#1f1f1f; color:#fff; border:1px solid #333; padding:8px 12px; border-radius:6px; cursor:pointer; }
-    nav button.active { background:#333; }
-    .toolbar { display:flex; gap:12px; justify-content:center; margin-bottom:12px; flex-wrap:wrap; }
-    #canvasWrapper { margin:0 auto; width:calc(64*var(--scale)*1px); height:calc(64*var(--scale)*1px); border:2px solid #333; background:#1a1a1a; position:relative; }
-    canvas { width:100%; height:100%; image-rendering:pixelated; display:block; }
-    .grid { position:absolute; inset:0; pointer-events:none;
-      background-image:linear-gradient(to right,rgba(255,255,255,0.06) 1px,transparent 1px),
-                       linear-gradient(to bottom,rgba(255,255,255,0.06) 1px,transparent 1px);
-      background-size:calc(var(--scale)*1px) calc(var(--scale)*1px); mix-blend-mode:screen; }
-    .gallery { display:grid; grid-template-columns:repeat(auto-fill,minmax(120px,1fr)); gap:12px; }
-    .gallery img { width:100%; image-rendering:pixelated; border:1px solid #333; background:#222; }
-    .note { text-align:center; font-size:12px; opacity:0.7; margin-top:8px; }
+    .overlay-grid {
+      pointer-events: none;
+      position: absolute;
+      inset: 0;
+    }
+
+    .swatches {
+      display: grid;
+      grid-template-columns: repeat(10, 1fr);
+      gap: 6px;
+    }
+    .swatch {
+      height: 24px;
+      border: 1px solid #2a2f47;
+      border-radius: 6px;
+      cursor: pointer;
+    }
+
+    .gallery {
+      display: grid;
+      grid-template-columns: repeat(auto-fill, minmax(180px, 1fr));
+      gap: 12px;
+      margin-top: 12px;
+    }
+    .card {
+      background: #14182a;
+      border: 1px solid #22263e;
+      border-radius: 10px;
+      overflow: hidden;
+      display: grid;
+      grid-template-rows: auto auto;
+    }
+    .card img {
+      width: 100%;
+      height: 160px;
+      object-fit: contain;
+      background: #0c0f1f;
+    }
+    .card .actions {
+      display: flex;
+      gap: 8px;
+      padding: 10px;
+      border-top: 1px solid #22263e;
+    }
+    .danger { border-color: var(--danger); color: var(--danger) }
+    .ok { border-color: var(--ok); color: var(--ok) }
+
+    footer {
+      margin: 20px auto;
+      max-width: 1100px;
+      padding: 8px 16px;
+      color: var(--muted);
+      font-size: 12px;
+    }
   </style>
 </head>
 <body>
-  <h1>Pixel Editor</h1>
-  <div class="toolbar">
-    <label>Resolution
-      <select id="resolution">
-        <option value="64">64×64</option>
-        <option value="42">42×42</option>
-        <option value="32">32×32</option>
-        <option value="16">16×16</option>
-      </select>
-    </label>
-    <label>Farbe <input type="color" id="color" value="#ff4d4d"></label>
-    <label>Zoom <input type="range" id="scale" min="4" max="16" value="8"></label>
-    <label>Werkzeug
-      <select id="tool">
-        <option value="pen">Stift</option>
-        <option value="eraser">Radierer</option>
-      </select>
-    </label>
-    <button id="clear">Leeren</button>
-    <button id="download">Download</button>
-  </div>
-  <h1>Pixel64 Plattform</h1>
-  <nav>
-    <button id="nav-editor" class="active">Editor</button>
-    <button id="nav-uploads">Uploads</button>
-    <button id="nav-my">Meine Bilder</button>
-  </nav>
-
-  <div id="canvasWrapper">
-    <canvas id="canvas"></canvas>
-  </div>
-  <!-- Editor -->
-  <section id="page-editor">
-    <div class="toolbar">
-      <label>Farbe <input type="color" id="color" value="#ff4d4d"></label>
-      <label>Zoom <input type="range" id="scale" min="4" max="16" value="8"></label>
-      <button id="clear">Leeren</button>
-      <button id="download">Download</button>
-      <button id="upload">Upload</button>
+  <header>
+    <div class="nav">
+      <div class="tabs">
+        <button class="tab-btn active" data-tab="editor">Editor</button>
+        <button class="tab-btn" data-tab="uploads">Uploads</button>
+      </div>
+      <div class="hint">Klick & Ziehen zum Malen. Erneut mit gleicher Farbe klicken, um zu radieren.</div>
     </div>
-    <div id="canvasWrapper">
-      <canvas id="canvas" width="64" height="64"></canvas>
-      <div class="grid"></div>
-    </div>
-    <div class="note">Linksklick: malen • Rechtsklick: radieren</div>
-  </section>
+  </header>
 
-  <!-- Uploads -->
-  <section id="page-uploads" style="display:none">
-    <h2>Alle Uploads</h2>
-    <div class="gallery" id="gallery-uploads"></div>
-  </section>
+  <main>
+    <!-- Editor -->
+    <section id="editor" class="panel">
+      <div class="grid-row">
+        <div>
+          <div class="canvas-wrap">
+            <canvas id="canvas" width="512" height="512" aria-label="Pixel-Canvas"></canvas>
+            <canvas id="grid" class="overlay-grid" width="512" height="512" aria-hidden="true"></canvas>
+          </div>
+        </div>
+        <div class="controls">
+          <div class="group">
+            <label>Rastergröße</label>
+            <div class="row">
+              <select id="gridSize">
+                <option value="16">16 x 16</option>
+                <option value="32">32 x 32</option>
+              </select>
+              <button id="clear">Leeren</button>
+              <button id="fill">Füllen</button>
+            </div>
+          </div>
 
-  <!-- Meine Bilder -->
-  <section id="page-my" style="display:none">
-    <h2>Meine Bilder</h2>
-    <div class="gallery" id="gallery-my"></div>
-  </section>
+          <div class="group">
+            <label>Farbe</label>
+            <div class="row">
+              <input type="color" id="colorPicker" value="#000000" />
+              <button id="eyedropper">Pipette</button>
+              <button id="eraser">Radierer</button>
+            </div>
+            <div class="swatches" id="swatches"></div>
+          </div>
+
+          <div class="group">
+            <label>Bild exportieren</label>
+            <div class="row">
+              <button id="download">Als PNG herunterladen</button>
+            </div>
+          </div>
+
+          <div class="group">
+            <label>Bild importieren (Upload)</label>
+            <div class="row">
+              <input type="file" id="fileInput" accept="image/png,image/jpeg" />
+              <button id="loadToCanvas">In Editor laden</button>
+              <button id="saveUpload" class="ok">In Galerie speichern</button>
+              <button id="openUploads">Uploads ansehen</button>
+            </div>
+            <div class="hint">Uploads werden lokal in deinem Browser gespeichert (localStorage).</div>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <!-- Uploads/Galerie -->
+    <section id="uploads" class="panel" style="display:none">
+      <div class="row" style="justify-content: space-between; align-items: center; margin-bottom: 10px;">
+        <h3 style="margin:0">Galerie</h3>
+        <div class="row">
+          <button id="refreshGallery">Aktualisieren</button>
+          <button id="backToEditor">Zum Editor</button>
+        </div>
+      </div>
+      <div class="gallery" id="gallery"></div>
+      <div class="hint">Tipp: Du kannst Bilder aus der Galerie in den Editor laden, herunterladen oder löschen.</div>
+    </section>
+  </main>
+
+  <footer>
+    Pixel Editor Demo — Raster 16x16 / 32x32, lokale Galerie. Keine Server, alles lokal im Browser gespeichert.
+  </footer>
 
   <script>
-    const canvas=document.getElementById('canvas');
-    const ctx=canvas.getContext('2d',{willReadFrequently:true});
-    const resolutionSelect=document.getElementById('resolution');
-    const color=document.getElementById('color');
-    const scale=document.getElementById('scale');
-    const clearBtn=document.getElementById('clear');
-    const downloadBtn=document.getElementById('download');
-    const color=document.getElementById('color');
-    const toolSelect=document.getElementById('tool');
-    const uploadBtn=document.getElementById('upload');
-    let drawing=false;
+    // --- State ---
+    const canvas = document.getElementById('canvas');
+    const ctx = canvas.getContext('2d', { willReadFrequently: true });
+    const gridCanvas = document.getElementById('grid');
+    const gctx = gridCanvas.getContext('2d');
+    const gridSizeSelect = document.getElementById('gridSize');
+    const colorPicker = document.getElementById('colorPicker');
+    const swatchesEl = document.getElementById('swatches');
+    const downloadBtn = document.getElementById('download');
+    const clearBtn = document.getElementById('clear');
+    const fillBtn = document.getElementById('fill');
+    const eyedropperBtn = document.getElementById('eyedropper');
+    const eraserBtn = document.getElementById('eraser');
+    const fileInput = document.getElementById('fileInput');
+    const loadToCanvasBtn = document.getElementById('loadToCanvas');
+    const saveUploadBtn = document.getElementById('saveUpload');
+    const openUploadsBtn = document.getElementById('openUploads');
+    const galleryEl = document.getElementById('gallery');
+    const refreshGalleryBtn = document.getElementById('refreshGallery');
+    const backToEditorBtn = document.getElementById('backToEditor');
 
-    // Canvas Setup
-    function setupCanvas(size){
-      canvas.width=size;
-      canvas.height=size;
-      document.getElementById('canvasWrapper').style.width=(size*scale.value)+"px";
-      document.getElementById('canvasWrapper').style.height=(size*scale.value)+"px";
-      ctx.clearRect(0,0,size,size);
-    }
-    setupCanvas(64);
+    const tabs = document.querySelectorAll('.tab-btn');
+    const sections = { editor: document.getElementById('editor'), uploads: document.getElementById('uploads') };
 
-    resolutionSelect.addEventListener('change',()=>{
-      setupCanvas(parseInt(resolutionSelect.value));
-    });
+    let gridN = parseInt(gridSizeSelect.value, 10); // 16 or 32
+    let cellSize = canvas.width / gridN;            // 32 or 16
+    let isDrawing = false;
+    let currentTool = 'brush'; // 'brush' | 'eraser' | 'eyedropper'
+    // Store per-cell color for toggle erase logic
+    let pixels = new Array(gridN * gridN).fill(null);
 
-    // Pixelberechnung
-    canvas.addEventListener('contextmenu',e=>e.preventDefault());
-    function getPixel(e){
-      const rect=canvas.getBoundingClientRect();
-      const x=Math.floor((e.clientX-rect.left)*canvas.width/rect.width);
-      const y=Math.floor((e.clientY-rect.top)*canvas.height/rect.height);
-      return {x,y};
-      return {x:Math.max(0,Math.min(63,x)),y:Math.max(0,Math.min(63,y))};
-    }
+    // --- Helpers ---
+    function indexFromXY(x, y) { return y * gridN + x; }
+    function clamp(v, min, max) { return Math.max(min, Math.min(max, v)); }
 
-    // Zeichnen / Radieren
-    function paint(x,y){ctx.fillStyle=color.value;ctx.fillRect(x,y,1,1);}
-    function erase(x,y){ctx.clearRect(x,y,1,1);}
-    function drawHandler(e){
-      const {x,y}=getPixel(e);
-      if(toolSelect.value==="eraser"){ erase(x,y); }
-      else { paint(x,y); }
+    function setGrid(n) {
+      gridN = n;
+      cellSize = canvas.width / gridN;
+      pixels = new Array(gridN * gridN).fill(null);
+      ctx.clearRect(0, 0, canvas.width, canvas.height);
+      drawGrid();
     }
 
-    // Maussteuerung
-    function drawHandler(e){const {x,y}=getPixel(e);const right=e.button===2||e.buttons===2;right?erase(x,y):paint(x,y);}
-    canvas.addEventListener('mousedown',e=>{drawing=true;drawHandler(e);});
-    window.addEventListener('mouseup',()=>drawing=false);
-    canvas.addEventListener('mousemove',e=>{if(drawing)drawHandler(e);});
-
-    // Touchsteuerung
-    canvas.addEventListener('touchstart',e=>{
-      drawing=true;
-      const rect=canvas.getBoundingClientRect();
-      const x=Math.floor((e.touches[0].clientX-rect.left)*canvas.width/rect.width);
-      const y=Math.floor((e.touches[0].clientY-rect.top)*canvas.height/rect.height);
-      if(toolSelect.value==="eraser"){ erase(x,y); } else { paint(x,y); }
-    });
-    canvas.addEventListener('touchmove',e=>{
-      if(drawing){
-        const rect=canvas.getBoundingClientRect();
-        const x=Math.floor((e.touches[0].clientX-rect.left)*canvas.width/rect.width);
-        const y=Math.floor((e.touches[0].clientY-rect.top)*canvas.height/rect.height);
-        if(toolSelect.value==="eraser"){ erase(x,y); } else { paint(x,y); }
+    function drawGrid() {
+      gctx.clearRect(0, 0, gridCanvas.width, gridCanvas.height);
+      gctx.strokeStyle = getComputedStyle(document.documentElement).getPropertyValue('--grid').trim() || '#2a2f47';
+      gctx.lineWidth = 1;
+      gctx.beginPath();
+      for (let i = 0; i <= gridN; i++) {
+        const p = Math.round(i * cellSize) + 0.5; // crisp lines
+        gctx.moveTo(p, 0); gctx.lineTo(p, gridCanvas.height);
+        gctx.moveTo(0, p); gctx.lineTo(gridCanvas.width, p);
       }
-    scale.addEventListener('input',e=>document.documentElement.style.setProperty('--scale',e.target.value));
-    clearBtn.addEventListener('click',()=>ctx.clearRect(0,0,64,64));
-    downloadBtn.addEventListener('click',()=>{
-      const a=document.createElement('a');
-      a.download='pixel64.png';
-      a.href=canvas.toDataURL('image/png');
+      gctx.stroke();
+    }
+
+    function drawCell(x, y, color) {
+      // Draw a single cell on canvas and update pixels state
+      ctx.fillStyle = color;
+      ctx.fillRect(x * cellSize, y * cellSize, cellSize, cellSize);
+      pixels[indexFromXY(x, y)] = color;
+    }
+
+    function clearCell(x, y) {
+      ctx.clearRect(x * cellSize, y * cellSize, cellSize, cellSize);
+      // Clear to transparent; but grid overlay remains visible
+      pixels[indexFromXY(x, y)] = null;
+    }
+
+    function pickCellColor(x, y) {
+      const col = pixels[indexFromXY(x, y)];
+      if (col) colorPicker.value = toHex(col);
+    }
+
+    function toHex(colorStr) {
+      // Normalize to hex; handle rgb(...) or already hex
+      if (colorStr.startsWith('#')) return colorStr;
+      const m = colorStr.match(/rgba?\((\d+),\s*(\d+),\s*(\d+)/i);
+      if (!m) return '#000000';
+      const r = (+m[1]).toString(16).padStart(2, '0');
+      const g = (+m[2]).toString(16).padStart(2, '0');
+      const b = (+m[3]).toString(16).padStart(2, '0');
+      return `#${r}${g}${b}`;
+    }
+
+    function getMouseCell(e) {
+      const rect = canvas.getBoundingClientRect();
+      const mx = e.clientX - rect.left;
+      const my = e.clientY - rect.top;
+      const x = clamp(Math.floor(mx / cellSize), 0, gridN - 1);
+      const y = clamp(Math.floor(my / cellSize), 0, gridN - 1);
+      return { x, y };
+    }
+
+    // --- Painting logic ---
+    function handlePaint(x, y) {
+      const currentColor = colorPicker.value;
+      const existing = pixels[indexFromXY(x, y)];
+      if (currentTool === 'eyedropper') {
+        pickCellColor(x, y);
+        return;
+      }
+      if (currentTool === 'eraser') {
+        clearCell(x, y);
+        return;
+      }
+      // Brush with toggle erase: if clicking same color again -> erase
+      if (existing && toHex(existing).toLowerCase() === currentColor.toLowerCase()) {
+        clearCell(x, y);
+      } else {
+        drawCell(x, y, currentColor);
+      }
+    }
+
+    // Mouse events
+    canvas.addEventListener('mousedown', e => {
+      isDrawing = true;
+      const { x, y } = getMouseCell(e);
+      handlePaint(x, y);
+    });
+    window.addEventListener('mouseup', () => { isDrawing = false; });
+    canvas.addEventListener('mousemove', e => {
+      if (!isDrawing) return;
+      const { x, y } = getMouseCell(e);
+      handlePaint(x, y);
+    });
+    // Touch support
+    canvas.addEventListener('touchstart', e => {
+      e.preventDefault();
+      isDrawing = true;
+      const t = e.touches[0];
+      const rect = canvas.getBoundingClientRect();
+      const x = clamp(Math.floor((t.clientX - rect.left) / cellSize), 0, gridN - 1);
+      const y = clamp(Math.floor((t.clientY - rect.top) / cellSize), 0, gridN - 1);
+      handlePaint(x, y);
+    }, { passive: false });
+    canvas.addEventListener('touchmove', e => {
+      e.preventDefault();
+      if (!isDrawing) return;
+      const t = e.touches[0];
+      const rect = canvas.getBoundingClientRect();
+      const x = clamp(Math.floor((t.clientX - rect.left) / cellSize), 0, gridN - 1);
+      const y = clamp(Math.floor((t.clientY - rect.top) / cellSize), 0, gridN - 1);
+      handlePaint(x, y);
+    }, { passive: false });
+    window.addEventListener('touchend', () => { isDrawing = false; });
+
+    // --- Controls ---
+    gridSizeSelect.addEventListener('change', () => setGrid(parseInt(gridSizeSelect.value, 10)));
+    clearBtn.addEventListener('click', () => {
+      ctx.clearRect(0, 0, canvas.width, canvas.height);
+      pixels.fill(null);
+    });
+    fillBtn.addEventListener('click', () => {
+      const c = colorPicker.value;
+      ctx.fillStyle = c;
+      ctx.fillRect(0, 0, canvas.width, canvas.height);
+      pixels = pixels.map(() => c);
+    });
+    eyedropperBtn.addEventListener('click', () => {
+      currentTool = (currentTool === 'eyedropper') ? 'brush' : 'eyedropper';
+      toggleToolButtons();
+    });
+    eraserBtn.addEventListener('click', () => {
+      currentTool = (currentTool === 'eraser') ? 'brush' : 'eraser';
+      toggleToolButtons();
+    });
+    function toggleToolButtons() {
+      [eyedropperBtn, eraserBtn].forEach(btn => btn.classList.remove('active'));
+      if (currentTool === 'eyedropper') eyedropperBtn.classList.add('active');
+      if (currentTool === 'eraser') eraserBtn.classList.add('active');
+    }
+
+    downloadBtn.addEventListener('click', () => {
+      const a = document.createElement('a');
+      a.download = `pixel_${gridN}x${gridN}.png`;
+      a.href = canvas.toDataURL('image/png');
       a.click();
     });
-    canvas.addEventListener('touchend',()=>drawing=false);
 
-    // Zoom
-    scale.addEventListener('input',e=>{
-      document.getElementById('canvasWrapper').style.width=(canvas.width*e.target.value)+"px";
-      document.getElementById('canvasWrapper').style.height=(canvas.height*e.target.value)+"px";
+    // --- Swatches ---
+    const defaultSwatches = [
+      '#000000','#FFFFFF','#FF4136','#2ECC40','#0074D9','#FF851B','#B10DC9','#7FDBFF',
+      '#F012BE','#3D9970','#111111','#AAAAAA','#FFD700','#8B4513','#00CED1','#DC143C',
+      '#4B0082','#00FF7F','#4169E1','#FF69B4'
+    ];
+    defaultSwatches.forEach(c => {
+      const s = document.createElement('div');
+      s.className = 'swatch'; s.style.background = c; s.title = c;
+      s.addEventListener('click', () => { colorPicker.value = c; currentTool = 'brush'; toggleToolButtons(); });
+      swatchesEl.appendChild(s);
     });
-    // Uploads speichern in LocalStorage
-    function saveUpload(mine=false){
-      const data=canvas.toDataURL('image/png');
-      const uploads=JSON.parse(localStorage.getItem('uploads')||'[]');
-      uploads.push({src:data,mine});
-      localStorage.setItem('uploads',JSON.stringify(uploads));
-      alert("Bild hochgeladen!");
-    }
-    uploadBtn.addEventListener('click',()=>saveUpload(true));
 
-    // Leeren
-    clearBtn.addEventListener('click',()=>ctx.clearRect(0,0,canvas.width,canvas.height));
-    // Navigation
-    const pages={editor:document.getElementById('page-editor'),
-                 uploads:document.getElementById('page-uploads'),
-                 my:document.getElementById('page-my')};
-    function showPage(name){
-      for(const key in pages){pages[key].style.display=(key===name)?'block':'none';}
-      document.querySelectorAll('nav button').forEach(b=>b.classList.remove('active'));
-      document.getElementById('nav-'+name).classList.add('active');
-      if(name!=='editor') renderGallery(name);
-    }
-    document.getElementById('nav-editor').onclick=()=>showPage('editor');
-    document.getElementById('nav-uploads').onclick=()=>showPage('uploads');
-    document.getElementById('nav-my').onclick=()=>showPage('my');
+    // --- Uploads (localStorage) ---
+    const LS_KEY = 'pixelUploads';
 
-    // Download
-    downloadBtn.addEventListener('click',()=>{
-      const url=canvas.toDataURL('image/png');
-      window.open(url,'_blank');
-    });
-    // Galerie rendern
-    function renderGallery(name){
-      const uploads=JSON.parse(localStorage.getItem('uploads')||'[]');
-      const container=document.getElementById('gallery-'+name);
-      container.innerHTML='';
-      uploads.filter(u=>name==='uploads'||u.mine).forEach(u=>{
-        const img=document.createElement('img');
-        img.src=u.src;
-        container.appendChild(img);
-      });
+    function getUploads() {
+      try {
+        const raw = localStorage.getItem(LS_KEY);
+        return raw ? JSON.parse(raw) : [];
+      } catch { return []; }
     }
-  </script>
-</body>
-</html>
+    function setUploads(arr) {
+      localStorage.setItem(LS_KEY, JSON.stringify(arr));
+    }
+
+    function renderGallery() {
+      const uploads = getUploads();
+      galleryEl.innerHTML = '';
+      if (!uploads.length) {
+        const empty = document.createElement('div');
+        empty.className = 'hint';
+        empty.textContent = 'Noch keine Uploads. Lade ein Bild hoch oder speichere aus dem Editor.';
+        galleryEl.appendChild(empty);
+        return;
+      }
+      uploads.forEach((u, i) => {
+        const card = document.createElement('div');
+        card.className = 'card';
+        const
