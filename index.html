@@ -21,7 +21,7 @@
   .cell {
     width:20px;
     height:20px;
-    border:1px solid #00f0ff; /* helles Neon-Blau für Linien */
+    border:1px solid #00f0ff; /* Neon-Blau Linien */
     background:#ccc;          /* Zellen hellgrau */
   }
   .controls {
@@ -61,7 +61,7 @@
     <option value="32">32×32</option>
   </select>
   <input type="color" id="color" value="#0074D9">
-  <button id="download">Download PNG</button>
+  <button id="download">Upload/Download</button>
   <input type="file" id="upload" accept="image/*">
 </div>
 
@@ -101,7 +101,7 @@ function makeGrid(n){
 sizeSel.onchange=()=>makeGrid(parseInt(sizeSel.value));
 makeGrid(gridSize);
 
-// Download als PNG
+// Upload/Download Button: speichert PNG und fügt in Galerie ein
 downloadBtn.onclick=()=>{
   const canvas=document.createElement('canvas');
   canvas.width=gridSize; canvas.height=gridSize;
