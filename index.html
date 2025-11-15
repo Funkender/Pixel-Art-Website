@@ -5,7 +5,7 @@
   <title>Pixel Plattform</title>
   <meta name="viewport" content="width=device-width, initial-scale=1" />
   <style>
-    :root { --scale: 16; }
+    :root { --scale: 16; --res:64; }
     body { background:#121212; color:#eaeaea; font-family:sans-serif; margin:0; padding:20px; }
     h1 { text-align:center; }
     nav { display:flex; gap:12px; justify-content:center; margin-bottom:20px; }
@@ -39,11 +39,7 @@
       <label>Farbe <input type="color" id="color" value="#ff4d4d"></label>
       <label>Zoom <input type="range" id="scale" min="4" max="20" value="16"></label>
       <label>Resolution 
-        <select id="resolution">
-          <option value="16">16×16</option>
-          <option value="32">32×32</option>
-          <option value="64" selected>64×64</option>
-        </select>
+        <input type="range" id="resolution" min="16" max="64" step="16" value="64">
       </label>
       <button id="tool-pencil">Stift</button>
       <button id="tool-eraser">Radierer</button>
@@ -55,7 +51,7 @@
       <canvas id="canvas" width="64" height="64"></canvas>
       <div class="grid"></div>
     </div>
-    <div class="note">Werkzeug auswählen: Stift oder Radierer</div>
+    <div class="note">Linke Maustaste gedrückt halten = Linien malen</div>
   </section>
 
   <!-- Uploads -->
@@ -82,7 +78,6 @@
     let drawing=false;
     let currentTool='pencil';
 
-    // Speicher nur im RAM
     let uploads=[];
 
     // Werkzeug
@@ -104,9 +99,16 @@
       else { paint(x,y); }
     }
 
-    canvas.addEventListener('mousedown',e=>{drawing=true;drawHandler(e);});
+    canvas.addEventListener('mousedown',e=>{
+      if(e.button===0){ // nur LMB
+        drawing=true;
+        drawHandler(e);
+      }
+    });
     window.addEventListener('mouseup',()=>drawing=false);
-    canvas.addEventListener('mousemove',e=>{if(drawing)drawHandler(e);});
+    canvas.addEventListener('mousemove',e=>{
+      if(drawing && e.buttons===1){ drawHandler(e); }
+    });
 
     // Zoom
     scale.addEventListener('input',e=>{
@@ -114,15 +116,13 @@
     });
 
     // Resolution ändern
-    resolution.addEventListener('change',e=>{
+    resolution.addEventListener('input',e=>{
       const res=parseInt(e.target.value);
       canvas.width=res;
       canvas.height=res;
       document.documentElement.style.setProperty('--res',res);
       ctx.clearRect(0,0,res,res);
     });
-    // Initial setzen
-    document.documentElement.style.setProperty('--res',64);
 
     // Buttons
     clearBtn.addEventListener('click',()=>ctx.clearRect(0,0,canvas.width,canvas.height));
@@ -165,15 +165,6 @@
         img.src=u.src;
         item.appendChild(img);
 
-        if(name==='uploads' && !u.mine){
-          const likeBtn=document.createElement('button');
-          likeBtn.textContent=`❤️ ${u.likes}`;
-          likeBtn.onclick=()=>{u.likes++; renderGallery(name);};
-          item.appendChild(likeBtn);
-        }
-        container.appendChild(item);
-      });
-    }
-  </script>
-</body>
-</html>
+        // Like-Button jetzt immer
+        const likeBtn=document.createElement('button');
+        likeBtn
