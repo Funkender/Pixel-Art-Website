@@ -1,102 +1,73 @@
-2,27 @@
-<html lang="de">
-<head>
-  <meta charset="UTF-8">
-  <title>Pixel Editor</title>
-  <title>Pixel Editor Schwarz</title>
-  <meta name="viewport" content="width=device-width, initial-scale=1" />
-  <style>
-    :root { --scale: 8; }
-    body { background:#121212; color:#eaeaea; font-family:sans-serif; margin:0; padding:20px; }
-    h1 { text-align:center; }
-    .toolbar { display:flex; gap:12px; justify-content:center; margin-bottom:12px; flex-wrap:wrap; }
-    body { background:#000; color:#eaeaea; font-family:sans-serif; margin:0; padding:20px; }
-    h1 { text-align:center; color:#fff; }
-    .toolbar {
-      display:flex; gap:20px; justify-content:center; flex-wrap:wrap;
-      margin:20px auto; font-size:16px;
-    }
-    .toolbar label, .toolbar button {
-      background:#111; color:#fff; padding:6px 10px; border-radius:6px;
-    }
-    .toolbar button { cursor:pointer; border:1px solid #333; }
-    #canvasWrapper {
-      margin:0 auto;
-      border:2px solid #333;
-      background:#1a1a1a;
-      width:512px; /* wird per JS überschrieben */
-      height:512px;
-      margin:0 auto; border:2px solid #444; background:#111;
-      width:512px; height:512px;
-    }
-    canvas {
-      width:100%;
-      height:100%;
-      image-rendering:pixelated;
-      display:block;
-      width:100%; height:100%; image-rendering:pixelated; display:block;
-      background:#000;
-    }
-  </style>
-</head>
-@@ -72,7 +74,6 @@ <h1>Pixel Editor</h1>
-    }
-    setupCanvas(64);
+<div class="toolbar">
+  <label>Resolution
+    <select id="resolution">
+      <option value="64">64×64</option>
+      <option value="42">42×42</option>
+      <option value="32">32×32</option>
+      <option value="16">16×16</option>
+    </select>
+  </label>
+  <label>Farbe <input type="color" id="color" value="#ff4d4d"></label>
+  <label>Zoom <input type="range" id="scale" min="4" max="16" value="8"></label>
+  <button id="clear">Leeren</button>
+  <button id="download">Download</button>
+</div>
 
-    // Umschalten über Dropdown
-    resolutionSelect.addEventListener('change',()=>{
-      setupCanvas(parseInt(resolutionSelect.value));
-    });
-@@ -86,4 +87,51 @@ <h1>Pixel Editor</h1>
-    }
+<script>
+  const canvas=document.getElementById('canvas');
+  const ctx=canvas.getContext('2d',{willReadFrequently:true});
+  const resolutionSelect=document.getElementById('resolution');
+  const scale=document.getElementById('scale');
+  const clearBtn=document.getElementById('clear');
+  const downloadBtn=document.getElementById('download');
+  const color=document.getElementById('color');
+  let drawing=false;
 
-    // Zeichnen / Radieren
-    function paint(x
-    function paint(x,y){ctx.fillStyle=color.value;ctx.fillRect(x,y,1,1);}
-    function erase(x,y){ctx.clearRect(x,y,1,1);}
-    function drawHandler(e){
-      const {x,y}=getPixel(e);
-      if(toolSelect.value==="eraser"){ erase(x,y); }
-      else { paint(x,y); }
-    }
+  // Funktion zum Neuaufbau des Canvas
+  function setupCanvas(size){
+    canvas.width=size;
+    canvas.height=size;
+    document.getElementById('canvasWrapper').style.width=(size*scale.value)+"px";
+    document.getElementById('canvasWrapper').style.height=(size*scale.value)+"px";
+    ctx.clearRect(0,0,size,size);
+  }
 
-    // Maussteuerung
-    canvas.addEventListener('mousedown',e=>{drawing=true;drawHandler(e);});
-    window.addEventListener('mouseup',()=>drawing=false);
-    canvas.addEventListener('mousemove',e=>{if(drawing)drawHandler(e);});
+  // Standard: 64×64
+  setupCanvas(64);
 
-    // Touchsteuerung
-    canvas.addEventListener('touchstart',e=>{
-      drawing=true;
-      const rect=canvas.getBoundingClientRect();
-      const x=Math.floor((e.touches[0].clientX-rect.left)*canvas.width/rect.width);
-      const y=Math.floor((e.touches[0].clientY-rect.top)*canvas.height/rect.height);
-      if(toolSelect.value==="eraser"){ erase(x,y); } else { paint(x,y); }
-    });
-    canvas.addEventListener('touchmove',e=>{
-      if(drawing){
-        const rect=canvas.getBoundingClientRect();
-        const x=Math.floor((e.touches[0].clientX-rect.left)*canvas.width/rect.width);
-        const y=Math.floor((e.touches[0].clientY-rect.top)*canvas.height/rect.height);
-        if(toolSelect.value==="eraser"){ erase(x,y); } else { paint(x,y); }
-      }
-    });
-    canvas.addEventListener('touchend',()=>drawing=false);
+  // Umschalten über Dropdown
+  resolutionSelect.addEventListener('change',()=>{
+    setupCanvas(parseInt(resolutionSelect.value));
+  });
 
-    // Zoom
-    scale.addEventListener('input',e=>{
-      document.getElementById('canvasWrapper').style.width=(canvas.width*e.target.value)+"px";
-      document.getElementById('canvasWrapper').style.height=(canvas.height*e.target.value)+"px";
-    });
+  // Malen / Radieren
+  canvas.addEventListener('contextmenu',e=>e.preventDefault());
+  function getPixel(e){
+    const rect=canvas.getBoundingClientRect();
+    const x=Math.floor((e.clientX-rect.left)*canvas.width/rect.width);
+    const y=Math.floor((e.clientY-rect.top)*canvas.height/rect.height);
+    return {x,y};
+  }
+  function paint(x,y){ctx.fillStyle=color.value;ctx.fillRect(x,y,1,1);}
+  function erase(x,y){ctx.clearRect(x,y,1,1);}
+  function drawHandler(e){const {x,y}=getPixel(e);const right=e.button===2||e.buttons===2;right?erase(x,y):paint(x,y);}
+  canvas.addEventListener('mousedown',e=>{drawing=true;drawHandler(e);});
+  window.addEventListener('mouseup',()=>drawing=false);
+  canvas.addEventListener('mousemove',e=>{if(drawing)drawHandler(e);});
 
-    // Leeren
-    clearBtn.addEventListener('click',()=>ctx.clearRect(0,0,canvas.width,canvas.height));
+  // Zoom
+  scale.addEventListener('input',e=>{
+    document.documentElement.style.setProperty('--scale',e.target.value);
+    document.getElementById('canvasWrapper').style.width=(canvas.width*e.target.value)+"px";
+    document.getElementById('canvasWrapper').style.height=(canvas.height*e.target.value)+"px";
+  });
 
-    // Download
-    downloadBtn.addEventListener('click',()=>{
-      const url=canvas.toDataURL('image/png');
-      window.open(url,'_blank');
-    });
-  </script>
-</body>
-</html>
+  // Leeren
+  clearBtn.addEventListener('click',()=>ctx.clearRect(0,0,canvas.width,canvas.height));
+
+  // Download (iOS-freundlich)
+  downloadBtn.addEventListener('click',()=>{
+    const url=canvas.toDataURL('image/png');
+    window.open(url,'_blank');
+  });
+</script>
