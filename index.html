@@ -12,7 +12,7 @@
     nav button { background:#1f1f1f; color:#fff; border:1px solid #333; padding:8px 12px; border-radius:6px; cursor:pointer; }
     nav button.active { background:#333; }
     .toolbar { display:flex; gap:12px; justify-content:center; margin-bottom:12px; flex-wrap:wrap; }
-    #canvasWrapper { margin:0 auto; border:2px solid #333; background:#1a1a1a; position:relative; image-rendering:pixelated; }
+    #canvasWrapper { margin:0 auto; border:2px solid #333; background:#1a1a1a; position:relative; }
     canvas { width:100%; height:100%; image-rendering:pixelated; display:block; }
     .grid { position:absolute; inset:0; pointer-events:none;
       background-image:linear-gradient(to right,rgba(255,255,255,0.06) 1px,transparent 1px),
@@ -61,7 +61,7 @@
       <canvas id="canvas" width="64" height="64"></canvas>
       <div class="grid"></div>
     </div>
-    <div class="note">Finger/Linksklick: malen • Werkzeug „Radierer“ löscht</div>
+    <div class="note">Finger/Maus: malen • Werkzeug „Radierer“ löscht</div>
   </section>
 
   <!-- Uploads -->
@@ -78,7 +78,7 @@
 
   <script>
     const canvas=document.getElementById('canvas');
-    const ctx=canvas.getContext('2d',{willReadFrequently:true});
+    const ctx=canvas.getContext('2d');
     const color=document.getElementById('color');
     const scale=document.getElementById('scale');
     const resolutionSelect=document.getElementById('resolution');
@@ -110,17 +110,24 @@
       const y=Math.floor((clientY-rect.top)*canvas.height/rect.height);
       return {x,y};
     }
-    function paint(x,y){ctx.fillStyle=color.value;ctx.fillRect(x,y,1,1);}
-    function erase(x,y){ctx.clearRect(x,y,1,1);}
     function draw(x,y){
-      if(toolSelect.value==="eraser"){ erase(x,y); }
-      else { paint(x,y); }
+      if(toolSelect.value==="eraser"){ ctx.clearRect(x,y,1,1); }
+      else { ctx.fillStyle=color.value; ctx.fillRect(x,y,1,1); }
     }
 
     // Maus
-    canvas.addEventListener('mousedown',e=>{drawing=true;const {x,y}=getPixelCoords(e.clientX,e.clientY);draw(x,y);});
+    canvas.addEventListener('mousedown',e=>{
+      drawing=true;
+      const {x,y}=getPixelCoords(e.clientX,e.clientY);
+      draw(x,y);
+    });
+    canvas.addEventListener('mousemove',e=>{
+      if(drawing){
+        const {x,y}=getPixelCoords(e.clientX,e.clientY);
+        draw(x,y);
+      }
+    });
     window.addEventListener('mouseup',()=>drawing=false);
-    canvas.addEventListener('mousemove',e=>{if(drawing){const {x,y}=getPixelCoords(e.clientX,e.clientY);draw(x,y);}});
 
     // Touch
     canvas.addEventListener('touchstart',e=>{
@@ -128,13 +135,13 @@
       const {x,y}=getPixelCoords(e.touches[0].clientX,e.touches[0].clientY);
       draw(x,y);
     });
-    canvas.addEventListener('touchend',()=>drawing=false);
     canvas.addEventListener('touchmove',e=>{
       if(drawing){
         const {x,y}=getPixelCoords(e.touches[0].clientX,e.touches[0].clientY);
         draw(x,y);
       }
     });
+    canvas.addEventListener('touchend',()=>drawing=false);
 
     // Zoom
     scale.addEventListener('input',e=>{
@@ -159,4 +166,14 @@
 
     // Uploads speichern
     function saveUpload(){
-      const data=canvas.to
+      const data=canvas.toDataURL('image/png');
+      const uploads=JSON.parse(localStorage.getItem('uploads')||'[]');
+      uploads.push({src:data,user:userId,likes:0});
+      localStorage.setItem('uploads',JSON.stringify(uploads));
+      alert("Bild hochgeladen!");
+    }
+    uploadBtn.addEventListener('click',saveUpload);
+
+    // Navigation
+    const pages={editor:document.getElementById('page-editor'),
+                 uploads:document.getElementById('page
