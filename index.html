@@ -3,11 +3,11 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
-<title>Einfacher Pixel Editor</title>
+<title>Pixel Editor Grau-Blau</title>
 <style>
   body {
     font-family:sans-serif;
-    background:#111;
+    background:#1e2a38; /* dunkelblauer Hintergrund */
     color:#eee;
     margin:0;
     padding:10px;
@@ -16,12 +16,13 @@
     display:grid;
     margin:10px auto;
     touch-action:none;
+    background:#fff; /* Rasterfläche weiß */
   }
   .cell {
     width:20px;
     height:20px;
-    border:1px solid #333;
-    background:#ddd; /* hellgrauer Hintergrund */
+    border:1px solid #aaa; /* graue Linien */
+    background:#fff;       /* Zellen weiß */
   }
   .controls {
     display:flex;
@@ -32,9 +33,12 @@
   button, select, input[type=color], input[type=file] {
     padding:8px;
     border-radius:6px;
-    border:1px solid #444;
-    background:#222;
+    border:1px solid #3a4a5a;
+    background:#2c3e50; /* blau-grau Buttons */
     color:#eee;
+  }
+  button:hover, select:hover {
+    background:#3d566e;
   }
   .gallery {
     display:grid;
@@ -49,14 +53,14 @@
 </style>
 </head>
 <body>
-<h2>Pixel Editor</h2>
+<h2>Pixel Editor Grau-Blau</h2>
 
 <div class="controls">
   <select id="size">
     <option value="16">16×16</option>
     <option value="32">32×32</option>
   </select>
-  <input type="color" id="color" value="#ff0000">
+  <input type="color" id="color" value="#0074D9">
   <button id="download">Download PNG</button>
   <input type="file" id="upload" accept="image/*">
 </div>
@@ -84,9 +88,9 @@ function makeGrid(n){
     const cell=document.createElement('div');
     cell.className='cell';
     cell.addEventListener('click',()=>{
-      if(cell.style.backgroundColor && cell.style.backgroundColor!=='' && cell.style.backgroundColor!=='transparent' && cell.style.backgroundColor!=='rgb(221, 221, 221)'){
-        // zurück auf hellgrau
-        cell.style.backgroundColor='#ddd';
+      if(cell.style.backgroundColor && cell.style.backgroundColor!=='' && cell.style.backgroundColor!=='transparent' && cell.style.backgroundColor!=='rgb(255, 255, 255)'){
+        // zurück auf weiß
+        cell.style.backgroundColor='#fff';
       } else {
         cell.style.backgroundColor=colorSel.value;
       }
@@ -104,7 +108,7 @@ downloadBtn.onclick=()=>{
   const ctx=canvas.getContext('2d');
   [...gridEl.children].forEach((cell,i)=>{
     const x=i%gridSize, y=Math.floor(i/gridSize);
-    ctx.fillStyle=cell.style.backgroundColor||'#ddd';
+    ctx.fillStyle=cell.style.backgroundColor||'#fff';
     ctx.fillRect(x,y,1,1);
   });
   const url=canvas.toDataURL();
