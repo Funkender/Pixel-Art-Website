@@ -1,169 +1,54 @@
-<!DOCTYPE html>
-<html lang="de">
-<head>
-  <meta charset="UTF-8" />
-  <title>Pixel Plattform</title>
-  <meta name="viewport" content="width=device-width, initial-scale=1" />
-  <style>
-    :root { --scale: 16; --res: 64; }
-    body { background:#121212; color:#eaeaea; font-family:sans-serif; margin:0; padding:20px; }
-    h1 { text-align:center; }
-    nav { display:flex; gap:12px; justify-content:center; margin-bottom:20px; }
-    nav button { background:#1f1f1f; color:#fff; border:1px solid #333; padding:8px 12px; border-radius:6px; cursor:pointer; }
-    nav button.active { background:#333; }
-    .toolbar { display:flex; gap:12px; justify-content:center; margin-bottom:12px; flex-wrap:wrap; }
-    #canvasWrapper { margin:0 auto; width:calc(var(--res)*var(--scale)*1px); height:calc(var(--res)*var(--scale)*1px); border:2px solid #333; background:#1a1a1a; position:relative; }
-    canvas { width:100%; height:100%; image-rendering:pixelated; display:block; }
-    .grid { position:absolute; inset:0; pointer-events:none;
-      background-image:linear-gradient(to right,rgba(255,255,255,0.08) 1px,transparent 1px),
-                       linear-gradient(to bottom,rgba(255,255,255,0.08) 1px,transparent 1px);
+linear-gradient(to bottom,rgba(255,255,255,0.06) 1px,transparent 1px);
       background-size:calc(var(--scale)*1px) calc(var(--scale)*1px); mix-blend-mode:screen; }
-    .tool { background:#1f1f1f; color:#fff; border:1px solid #333; padding:8px 12px; border-radius:6px; cursor:pointer; }
-    .tool.active { background:#3a3a3a; border-color:#555; }
     .gallery { display:grid; grid-template-columns:repeat(auto-fill,minmax(120px,1fr)); gap:12px; }
+    .gallery img { width:100%; image-rendering:pixelated; border:1px solid #333; background:#222; }
     .gallery .item { background:#222; border:1px solid #333; padding:4px; text-align:center; }
     .gallery img { width:100%; image-rendering:pixelated; }
     .gallery button { margin-top:4px; background:#444; color:#fff; border:none; padding:4px 8px; cursor:pointer; border-radius:4px; }
     .note { text-align:center; font-size:12px; opacity:0.7; margin-top:8px; }
-    label span { display:inline-block; min-width:84px; }
   </style>
 </head>
-<body>
-  <h1>Pixel Plattform</h1>
-  <nav>
-    <button id="nav-editor" class="active">Editor</button>
-    <button id="nav-uploads">Uploads</button>
-    <button id="nav-my">Meine Bilder</button>
-  </nav>
+@@ -69,6 +71,9 @@ <h2>Meine Bilder</h2>
+    const uploadBtn=document.getElementById('upload');
+    let drawing=false;
 
-  <!-- Editor -->
-  <section id="page-editor">
-    <div class="toolbar">
-      <label><span>Farbe</span><input type="color" id="color" value="#ff4d4d"></label>
-      <label><span>Zoom</span><input type="range" id="scale" min="4" max="20" value="16"></label>
-      <label><span>Resolution</span>
-        <input type="range" id="resolution" min="16" max="64" step="16" value="64">
-      </label>
-      <button id="tool-pencil" class="tool active">Stift</button>
-      <button id="tool-eraser" class="tool">Radierer</button>
-      <button id="clear">Leeren</button>
-      <button id="download">Download</button>
-      <button id="upload">Upload</button>
-    </div>
-    <div id="canvasWrapper">
-      <canvas id="canvas" width="64" height="64"></canvas>
-      <div class="grid"></div>
-    </div>
-    <div class="note">Linke Maustaste gedrückt halten: Linien malen oder radieren</div>
-  </section>
+    // Speicher nur im RAM
+    let uploads=[];
 
-  <!-- Uploads -->
-  <section id="page-uploads" style="display:none">
-    <h2>Alle Uploads</h2>
-    <div class="gallery" id="gallery-uploads"></div>
-  </section>
-
-  <!-- Meine Bilder -->
-  <section id="page-my" style="display:none">
-    <h2>Meine Bilder</h2>
-    <div class="gallery" id="gallery-my"></div>
-  </section>
-
-  <script>
-    const canvas = document.getElementById('canvas');
-    const ctx = canvas.getContext('2d', { willReadFrequently: true });
-    const color = document.getElementById('color');
-    const scale = document.getElementById('scale');
-    const resolution = document.getElementById('resolution');
-    const clearBtn = document.getElementById('clear');
-    const downloadBtn = document.getElementById('download');
-    const uploadBtn = document.getElementById('upload');
-    const toolPencil = document.getElementById('tool-pencil');
-    const toolEraser = document.getElementById('tool-eraser');
-
-    let drawing = false;
-    let currentTool = 'pencil';
-    let uploads = [];
-
-    // Werkzeug-Auswahl
-    function setTool(name) {
-      currentTool = name;
-      toolPencil.classList.toggle('active', name === 'pencil');
-      toolEraser.classList.toggle('active', name === 'eraser');
-    }
-    toolPencil.onclick = () => setTool('pencil');
-    toolEraser.onclick = () => setTool('eraser');
-
-    // Pixelberechnung
-    function getPixel(e) {
-      const rect = canvas.getBoundingClientRect();
-      const x = Math.floor((e.clientX - rect.left) * canvas.width / rect.width);
-      const y = Math.floor((e.clientY - rect.top) * canvas.height / rect.height);
-      return { x: Math.max(0, Math.min(canvas.width - 1, x)), y: Math.max(0, Math.min(canvas.height - 1, y)) };
-    }
-
-    // Werkzeuge
-    function paint(x, y) { ctx.fillStyle = color.value; ctx.fillRect(x, y, 1, 1); }
-    function erase(x, y) { ctx.clearRect(x, y, 1, 1); }
-
-    function drawHandler(e) {
-      const { x, y } = getPixel(e);
-      if (currentTool === 'eraser') erase(x, y);
-      else paint(x, y);
-    }
-
-    // Zeichnen mit LMB gedrückt halten
-    canvas.addEventListener('mousedown', e => {
-      if (e.button === 0) {
-        drawing = true;
-        drawHandler(e);
-      }
-    });
-    window.addEventListener('mouseup', () => drawing = false);
-    canvas.addEventListener('mousemove', e => {
-      if (drawing && (e.buttons & 1)) {
-        drawHandler(e);
-      }
-    });
-
-    // Zoom
-    scale.addEventListener('input', e => {
-      document.documentElement.style.setProperty('--scale', e.target.value);
-    });
-
-    // Resolution ändern
-    function setResolution(res) {
-      canvas.width = res;
-      canvas.height = res;
-      document.documentElement.style.setProperty('--res', res);
-      ctx.clearRect(0, 0, res, res);
-    }
-    resolution.addEventListener('input', e => setResolution(parseInt(e.target.value, 10)));
-    setResolution(parseInt(resolution.value, 10));
-
-    // Buttons
-    clearBtn.addEventListener('click', () => ctx.clearRect(0, 0, canvas.width, canvas.height));
-    downloadBtn.addEventListener('click', () => {
-      const a = document.createElement('a');
-      a.download = `pixel_${canvas.width}x${canvas.height}.png`;
-      a.href = canvas.toDataURL('image/png');
+    canvas.addEventListener('contextmenu',e=>e.preventDefault());
+    function getPixel(e){
+      const rect=canvas.getBoundingClientRect();
+@@ -91,12 +96,10 @@ <h2>Meine Bilder</h2>
       a.click();
     });
 
-    function saveUpload(mine = false) {
-      const data = canvas.toDataURL('image/png');
-      uploads.push({ id: Date.now(), src: data, mine, likes: 0 });
-      alert('Bild hochgeladen!');
+    // Uploads speichern in LocalStorage
+    // Uploads nur im Speicher
+    function saveUpload(mine=false){
+      const data=canvas.toDataURL('image/png');
+      const uploads=JSON.parse(localStorage.getItem('uploads')||'[]');
+      uploads.push({src:data,mine});
+      localStorage.setItem('uploads',JSON.stringify(uploads));
+      uploads.push({id:Date.now(),src:data,mine,likes:0});
+      alert("Bild hochgeladen!");
     }
-    uploadBtn.addEventListener('click', () => saveUpload(true));
+    uploadBtn.addEventListener('click',()=>saveUpload(true));
+@@ -117,15 +120,10 @@ <h2>Meine Bilder</h2>
 
-    // Navigation
-    const pages = {
-      editor: document.getElementById('page-editor'),
-      uploads: document.getElementById('page-uploads'),
-      my: document.getElementById('page-my')
-    };
-    function showPage(name) {
-      for (const key in pages) pages[key].style.display = (key === name) ? 'block' : 'none';
-      document.querySelectorAll('nav button').forEach(b => b.classList.remove('active'));
-     
+    // Galerie rendern
+    function renderGallery(name){
+      const uploads=JSON.parse(localStorage.getItem('uploads')||'[]');
+      const container=document.getElementById('gallery-'+name);
+      container.innerHTML='';
+      uploads.filter(u=>name==='uploads'||u.mine).forEach(u=>{
+        const item=document.createElement('div');
+        item.className='item';
+        const img=document.createElement('img');
+        img.src=u.src;
+        container.appendChild(img);
+      });
+    }
+  </script>
+</body>
+</html>
+        img
