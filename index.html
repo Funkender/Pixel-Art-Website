@@ -5,7 +5,7 @@
   <title>Pixel Plattform</title>
   <meta name="viewport" content="width=device-width, initial-scale=1" />
   <style>
-    :root { --scale: 16; --res:64; }
+    :root { --scale: 16; --res: 64; }
     body { background:#121212; color:#eaeaea; font-family:sans-serif; margin:0; padding:20px; }
     h1 { text-align:center; }
     nav { display:flex; gap:12px; justify-content:center; margin-bottom:20px; }
@@ -15,14 +15,17 @@
     #canvasWrapper { margin:0 auto; width:calc(var(--res)*var(--scale)*1px); height:calc(var(--res)*var(--scale)*1px); border:2px solid #333; background:#1a1a1a; position:relative; }
     canvas { width:100%; height:100%; image-rendering:pixelated; display:block; }
     .grid { position:absolute; inset:0; pointer-events:none;
-      background-image:linear-gradient(to right,rgba(255,255,255,0.06) 1px,transparent 1px),
-                       linear-gradient(to bottom,rgba(255,255,255,0.06) 1px,transparent 1px);
+      background-image:linear-gradient(to right,rgba(255,255,255,0.08) 1px,transparent 1px),
+                       linear-gradient(to bottom,rgba(255,255,255,0.08) 1px,transparent 1px);
       background-size:calc(var(--scale)*1px) calc(var(--scale)*1px); mix-blend-mode:screen; }
+    .tool { background:#1f1f1f; color:#fff; border:1px solid #333; padding:8px 12px; border-radius:6px; cursor:pointer; }
+    .tool.active { background:#3a3a3a; border-color:#555; }
     .gallery { display:grid; grid-template-columns:repeat(auto-fill,minmax(120px,1fr)); gap:12px; }
     .gallery .item { background:#222; border:1px solid #333; padding:4px; text-align:center; }
     .gallery img { width:100%; image-rendering:pixelated; }
     .gallery button { margin-top:4px; background:#444; color:#fff; border:none; padding:4px 8px; cursor:pointer; border-radius:4px; }
     .note { text-align:center; font-size:12px; opacity:0.7; margin-top:8px; }
+    label span { display:inline-block; min-width:84px; }
   </style>
 </head>
 <body>
@@ -36,13 +39,13 @@
   <!-- Editor -->
   <section id="page-editor">
     <div class="toolbar">
-      <label>Farbe <input type="color" id="color" value="#ff4d4d"></label>
-      <label>Zoom <input type="range" id="scale" min="4" max="20" value="16"></label>
-      <label>Resolution 
+      <label><span>Farbe</span><input type="color" id="color" value="#ff4d4d"></label>
+      <label><span>Zoom</span><input type="range" id="scale" min="4" max="20" value="16"></label>
+      <label><span>Resolution</span>
         <input type="range" id="resolution" min="16" max="64" step="16" value="64">
       </label>
-      <button id="tool-pencil">Stift</button>
-      <button id="tool-eraser">Radierer</button>
+      <button id="tool-pencil" class="tool active">Stift</button>
+      <button id="tool-eraser" class="tool">Radierer</button>
       <button id="clear">Leeren</button>
       <button id="download">Download</button>
       <button id="upload">Upload</button>
@@ -51,7 +54,7 @@
       <canvas id="canvas" width="64" height="64"></canvas>
       <div class="grid"></div>
     </div>
-    <div class="note">Linke Maustaste gedrückt halten = Linien malen</div>
+    <div class="note">Linke Maustaste gedrückt halten: Linien malen oder radieren</div>
   </section>
 
   <!-- Uploads -->
@@ -67,104 +70,142 @@
   </section>
 
   <script>
-    const canvas=document.getElementById('canvas');
-    const ctx=canvas.getContext('2d',{willReadFrequently:true});
-    const color=document.getElementById('color');
-    const scale=document.getElementById('scale');
-    const resolution=document.getElementById('resolution');
-    const clearBtn=document.getElementById('clear');
-    const downloadBtn=document.getElementById('download');
-    const uploadBtn=document.getElementById('upload');
-    let drawing=false;
-    let currentTool='pencil';
+    // Canvas + UI
+    const canvas = document.getElementById('canvas');
+    const ctx = canvas.getContext('2d', { willReadFrequently: true });
+    const color = document.getElementById('color');
+    const scale = document.getElementById('scale');
+    const resolution = document.getElementById('resolution');
+    const clearBtn = document.getElementById('clear');
+    const downloadBtn = document.getElementById('download');
+    const uploadBtn = document.getElementById('upload');
+    const toolPencil = document.getElementById('tool-pencil');
+    const toolEraser = document.getElementById('tool-eraser');
 
-    let uploads=[];
+    let drawing = false;
+    let currentTool = 'pencil';
 
-    // Werkzeug
-    document.getElementById('tool-pencil').onclick=()=>currentTool='pencil';
-    document.getElementById('tool-eraser').onclick=()=>currentTool='eraser';
+    // Speicher nur im RAM
+    let uploads = [];
+
+    // Kontextmenü deaktivieren (damit RMB nie stört)
+    canvas.addEventListener('contextmenu', e => e.preventDefault());
+
+    // Werkzeuge mit Active-Style
+    function setTool(name) {
+      currentTool = name;
+      toolPencil.classList.toggle('active', name === 'pencil');
+      toolEraser.classList.toggle('active', name === 'eraser');
+    }
+    toolPencil.onclick = () => setTool('pencil');
+    toolEraser.onclick = () => setTool('eraser');
 
     // Pixelberechnung
-    function getPixel(e){
-      const rect=canvas.getBoundingClientRect();
-      const x=Math.floor((e.clientX-rect.left)*canvas.width/rect.width);
-      const y=Math.floor((e.clientY-rect.top)*canvas.height/rect.height);
-      return {x:Math.max(0,Math.min(canvas.width-1,x)),y:Math.max(0,Math.min(canvas.height-1,y))};
-    }
-    function paint(x,y){ctx.fillStyle=color.value;ctx.fillRect(x,y,1,1);}
-    function erase(x,y){ctx.clearRect(x,y,1,1);}
-    function drawHandler(e){
-      const {x,y}=getPixel(e);
-      if(currentTool==='eraser'){ erase(x,y); }
-      else { paint(x,y); }
+    function getPixel(e) {
+      const rect = canvas.getBoundingClientRect();
+      const x = Math.floor((e.clientX - rect.left) * canvas.width / rect.width);
+      const y = Math.floor((e.clientY - rect.top) * canvas.height / rect.height);
+      return {
+        x: Math.max(0, Math.min(canvas.width - 1, x)),
+        y: Math.max(0, Math.min(canvas.height - 1, y))
+      };
     }
 
-    canvas.addEventListener('mousedown',e=>{
-      if(e.button===0){ // nur LMB
-        drawing=true;
+    // Werkzeuge anwenden
+    function paint(x, y) { ctx.fillStyle = color.value; ctx.fillRect(x, y, 1, 1); }
+    function erase(x, y) { ctx.clearRect(x, y, 1, 1); }
+
+    // Zeichnen: nur LMB, kontinuierlich beim Halten
+    function drawHandler(e) {
+      const { x, y } = getPixel(e);
+      if (currentTool === 'eraser') erase(x, y);
+      else paint(x, y);
+    }
+
+    canvas.addEventListener('mousedown', e => {
+      if (e.button === 0) { // nur linke Taste
+        drawing = true;
         drawHandler(e);
       }
     });
-    window.addEventListener('mouseup',()=>drawing=false);
-    canvas.addEventListener('mousemove',e=>{
-      if(drawing && e.buttons===1){ drawHandler(e); }
+    window.addEventListener('mouseup', () => { drawing = false; });
+    canvas.addEventListener('mousemove', e => {
+      if (drawing && (e.buttons & 1) === 1) { // LMB gedrückt
+        drawHandler(e);
+      }
     });
 
-    // Zoom
-    scale.addEventListener('input',e=>{
-      document.documentElement.style.setProperty('--scale',e.target.value);
+    // Zoom (CSS Scale)
+    scale.addEventListener('input', e => {
+      document.documentElement.style.setProperty('--scale', e.target.value);
     });
 
-    // Resolution ändern
-    resolution.addEventListener('input',e=>{
-      const res=parseInt(e.target.value);
-      canvas.width=res;
-      canvas.height=res;
-      document.documentElement.style.setProperty('--res',res);
-      ctx.clearRect(0,0,res,res);
-    });
+    // Resolution ändern: Canvas, Wrapper und Grid synchron halten
+    function setResolution(res) {
+      canvas.width = res;
+      canvas.height = res;
+      document.documentElement.style.setProperty('--res', res);
+      // Inhalt leeren (einfacher Reset; falls du skalieren willst, kann ich dir ein Resample einbauen)
+      ctx.clearRect(0, 0, res, res);
+    }
+    resolution.addEventListener('input', e => setResolution(parseInt(e.target.value, 10)));
+    // Initiale Werte
+    setResolution(parseInt(resolution.value, 10));
 
     // Buttons
-    clearBtn.addEventListener('click',()=>ctx.clearRect(0,0,canvas.width,canvas.height));
-    downloadBtn.addEventListener('click',()=>{
-      const a=document.createElement('a');
-      a.download='pixel.png';
-      a.href=canvas.toDataURL('image/png');
+    clearBtn.addEventListener('click', () => ctx.clearRect(0, 0, canvas.width, canvas.height));
+    downloadBtn.addEventListener('click', () => {
+      const a = document.createElement('a');
+      a.download = `pixel_${canvas.width}x${canvas.height}.png`;
+      a.href = canvas.toDataURL('image/png');
       a.click();
     });
 
-    function saveUpload(mine=false){
-      const data=canvas.toDataURL('image/png');
-      uploads.push({id:Date.now(),src:data,mine,likes:0});
-      alert("Bild hochgeladen!");
+    function saveUpload(mine = false) {
+      const data = canvas.toDataURL('image/png');
+      uploads.push({ id: Date.now(), src: data, mine, likes: 0 });
+      alert('Bild hochgeladen!');
     }
-    uploadBtn.addEventListener('click',()=>saveUpload(true));
+    uploadBtn.addEventListener('click', () => saveUpload(true));
 
     // Navigation
-    const pages={editor:document.getElementById('page-editor'),
-                 uploads:document.getElementById('page-uploads'),
-                 my:document.getElementById('page-my')};
-    function showPage(name){
-      for(const key in pages){pages[key].style.display=(key===name)?'block':'none';}
-      document.querySelectorAll('nav button').forEach(b=>b.classList.remove('active'));
-      document.getElementById('nav-'+name).classList.add('active');
-      if(name!=='editor') renderGallery(name);
+    const pages = {
+      editor: document.getElementById('page-editor'),
+      uploads: document.getElementById('page-uploads'),
+      my: document.getElementById('page-my')
+    };
+    function showPage(name) {
+      for (const key in pages) pages[key].style.display = (key === name) ? 'block' : 'none';
+      document.querySelectorAll('nav button').forEach(b => b.classList.remove('active'));
+      document.getElementById('nav-' + name).classList.add('active');
+      if (name !== 'editor') renderGallery(name);
     }
-    document.getElementById('nav-editor').onclick=()=>showPage('editor');
-    document.getElementById('nav-uploads').onclick=()=>showPage('uploads');
-    document.getElementById('nav-my').onclick=()=>showPage('my');
+    document.getElementById('nav-editor').onclick = () => showPage('editor');
+    document.getElementById('nav-uploads').onclick = () => showPage('uploads');
+    document.getElementById('nav-my').onclick = () => showPage('my');
 
-    // Galerie
-    function renderGallery(name){
-      const container=document.getElementById('gallery-'+name);
-      container.innerHTML='';
-      uploads.filter(u=>name==='uploads'||u.mine).forEach(u=>{
-        const item=document.createElement('div');
-        item.className='item';
-        const img=document.createElement('img');
-        img.src=u.src;
-        item.appendChild(img);
+    // Galerie mit Like-Button (für alle Bilder, auch eigene)
+    function renderGallery(name) {
+      const container = document.getElementById('gallery-' + name);
+      container.innerHTML = '';
+      uploads
+        .filter(u => name === 'uploads' || u.mine)
+        .forEach(u => {
+          const item = document.createElement('div');
+          item.className = 'item';
 
-        // Like-Button jetzt immer
-        const likeBtn=document.createElement('button');
-        likeBtn
+          const img = document.createElement('img');
+          img.src = u.src;
+          item.appendChild(img);
+
+          const likeBtn = document.createElement('button');
+          likeBtn.textContent = `❤️ ${u.likes}`;
+          likeBtn.onclick = () => { u.likes++; likeBtn.textContent = `❤️ ${u.likes}`; };
+          item.appendChild(likeBtn);
+
+          container.appendChild(item);
+        });
+    }
+  </script>
+</body>
+</html>
